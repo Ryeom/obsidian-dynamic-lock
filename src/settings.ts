@@ -1,5 +1,38 @@
-import { App, PluginSettingTab, Setting, ButtonComponent } from "obsidian";
+import { App, PluginSettingTab, Setting, ButtonComponent, AbstractInputSuggest, TFolder } from "obsidian";
 import MyPlugin from "./main";
+
+export class FolderSuggest extends AbstractInputSuggest<TFolder> {
+	inputEl: HTMLInputElement;
+
+	constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
+		this.inputEl = inputEl;
+	}
+
+	getSuggestions(inputStr: string): TFolder[] {
+		const abstractFiles = this.app.vault.getAllLoadedFiles();
+		const folders: TFolder[] = [];
+		const lowerCaseInputStr = inputStr.toLowerCase();
+
+		abstractFiles.forEach((file) => {
+			if (file instanceof TFolder && file.path.toLowerCase().contains(lowerCaseInputStr)) {
+				folders.push(file);
+			}
+		});
+
+		return folders;
+	}
+
+	renderSuggestion(file: TFolder, el: HTMLElement): void {
+		el.setText(file.path);
+	}
+
+	selectSuggestion(file: TFolder): void {
+		this.inputEl.value = file.path;
+		this.inputEl.trigger("input");
+		this.close();
+	}
+}
 
 export type ViewMode = 'source' | 'preview';
 
@@ -191,13 +224,16 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 			const div = containerEl.createDiv({ cls: 'dynamic-lock-rule-container' });
 
 			new Setting(containerEl)
-				.addText(text => text
-					.setPlaceholder('Folder Path (e.g. Archives/)')
-					.setValue(rule.path)
-					.onChange(async (value) => {
-						rule.path = value;
-						await this.plugin.saveSettings();
-					}))
+				.addText(text => {
+					text
+						.setPlaceholder('Folder Path (e.g. Archives/)')
+						.setValue(rule.path)
+						.onChange(async (value) => {
+							rule.path = value;
+							await this.plugin.saveSettings();
+						});
+					new FolderSuggest(this.app, text.inputEl);
+				})
 				.addDropdown(dropdown => dropdown
 					.addOption('source', 'Editing')
 					.addOption('preview', 'Reading')
