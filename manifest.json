@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
+	"id": "obsidian-dynamic-lock",
+	"name": "Dynamic Lock",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Dynamically switch between Reading and Editing modes based on file properties or global lock settings.",
+	"author": "Ryeom",
+	"authorUrl": "https://github.com/Ryeom/obsidian-dynamic-lock",
+	"fundingUrl": "https://github.com/sponsors/Ryeom",
 	"isDesktopOnly": false
 }
