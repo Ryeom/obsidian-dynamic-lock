@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, setIcon } from 'obsidian';
 import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab } from "./settings";
 
 // Remember to rename these classes and interfaces!
@@ -20,16 +20,37 @@ export default class MyPlugin extends Plugin {
 			const modes: Array<MyPluginSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
 			const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
 			const nextIndex = (currentIndex + 1) % modes.length;
-			this.settings.globalMode = modes[nextIndex]!;
-			await this.saveSettings();
-			new Notice(`Dynamic Lock: Switched to ${this.settings.globalMode}`);
+			await this.setGlobalMode(modes[nextIndex]!);
+		});
 
-			// Re-evaluate current file
-			const file = this.app.workspace.getActiveFile();
-			if (file) {
-				// Trigger the file-open logic manually
-				this.app.workspace.trigger('file-open', file);
+		// Add Commands
+		this.addCommand({
+			id: 'cycle-global-mode',
+			name: 'Cycle Global Mode',
+			callback: async () => {
+				const modes: Array<MyPluginSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
+				const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
+				const nextIndex = (currentIndex + 1) % modes.length;
+				await this.setGlobalMode(modes[nextIndex]!);
 			}
+		});
+
+		this.addCommand({
+			id: 'set-global-mode-auto',
+			name: 'Set Global Mode to Auto',
+			callback: async () => this.setGlobalMode('auto')
+		});
+
+		this.addCommand({
+			id: 'set-global-mode-reading',
+			name: 'Set Global Lock (Reading)',
+			callback: async () => this.setGlobalMode('force-reading')
+		});
+
+		this.addCommand({
+			id: 'set-global-mode-editing',
+			name: 'Set Global Mode to Editing',
+			callback: async () => this.setGlobalMode('force-editing')
 		});
 
 		this.registerEvent(this.app.workspace.on('file-open', async (file) => {
@@ -110,6 +131,9 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {
+		if (this.statusBarItem) {
+			this.statusBarItem.remove();
+		}
 	}
 
 	async loadSettings() {
@@ -121,16 +145,56 @@ export default class MyPlugin extends Plugin {
 		this.updateStatusBar();
 	}
 
+	async setGlobalMode(mode: MyPluginSettings['globalMode']) {
+		this.settings.globalMode = mode;
+		await this.saveSettings();
+		new Notice(`Dynamic Lock: Switched to ${mode}`);
+
+		// Re-evaluate current file
+		const file = this.app.workspace.getActiveFile();
+		if (file) {
+			// Trigger the file-open logic manually
+			this.app.workspace.trigger('file-open', file);
+		}
+	}
+
 	updateStatusBar() {
 		if (!this.statusBarItem) return;
 
-		let text = 'Lock: ';
+		this.statusBarItem.empty();
+
+		// Icon
+		let iconName = 'sparkles';
+		let text = ' Auto';
+		let cls = '';
+
 		switch (this.settings.globalMode) {
-			case 'auto': text += 'Auto'; break;
-			case 'force-reading': text += 'Reading'; break;
-			case 'force-editing': text += 'Editing'; break;
+			case 'auto':
+				iconName = 'sparkles';
+				text = ' Auto';
+				break;
+			case 'force-reading':
+				iconName = 'lock';
+				text = ' Locked';
+				cls = 'mod-error';
+				break;
+			case 'force-editing':
+				iconName = 'lock-open';
+				text = ' Editing';
+				cls = 'mod-success';
+				break;
 		}
-		this.statusBarItem.setText(text);
+
+		// Obsidian API: setIcon(parent, iconId)
+		// We create a span for the icon
+		const iconSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-icon' });
+		setIcon(iconSpan, iconName);
+		// Add margin to icon for spacing
+		iconSpan.style.marginRight = '4px';
+
+		// Text
+		const textSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-segment' });
+		textSpan.setText(text);
 	}
 }
 
