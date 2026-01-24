@@ -9,14 +9,21 @@ export interface Rule {
 	mode: ViewMode;
 }
 
+export interface FolderRule {
+	path: string;
+	mode: ViewMode;
+}
+
 export interface MyPluginSettings {
 	rules: Rule[];
+	folderRules: FolderRule[];
 	defaultMode: 'keep' | ViewMode;
 	globalMode: 'auto' | 'force-reading' | 'force-editing';
 }
 
 export const DEFAULT_SETTINGS: MyPluginSettings = {
 	rules: [],
+	folderRules: [],
 	defaultMode: 'keep',
 	globalMode: 'auto'
 }
@@ -74,7 +81,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 			const div = containerEl.createDiv({ cls: 'dynamic-lock-rule-container' });
 			// Styling can be done in styles.css, but for now we rely on default layout or simple styles if needed.
 			// Ideally we want them in a row. Obsidian Settings usually stack, but we can try to put them in one Setting item or a div.
-			
+
 			// Using a Setting for each rule row
 			const s = new Setting(containerEl)
 				.addText(text => text
@@ -107,8 +114,59 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 						this.display();
 					}));
-            
-            // Removing the default border if we want a tighter look, but standard is fine.
+
+			// Removing the default border if we want a tighter look, but standard is fine.
+		});
+
+		new Setting(containerEl)
+			.setName('Folder Rules')
+			.setDesc('Define rules based on file path. Longest prefix match will be applied.')
+			.setHeading();
+
+		// Add Folder Rule Button
+		new Setting(containerEl)
+			.addButton((btn: ButtonComponent) => {
+				btn
+					.setButtonText("Add Folder Rule")
+					.setCta()
+					.onClick(async () => {
+						this.plugin.settings.folderRules.push({
+							path: "",
+							mode: 'preview'
+						});
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
+
+		// Render Folder Rules
+		this.plugin.settings.folderRules.forEach((rule, index) => {
+			const div = containerEl.createDiv({ cls: 'dynamic-lock-rule-container' });
+
+			new Setting(containerEl)
+				.addText(text => text
+					.setPlaceholder('Folder Path (e.g. Archives/)')
+					.setValue(rule.path)
+					.onChange(async (value) => {
+						rule.path = value;
+						await this.plugin.saveSettings();
+					}))
+				.addDropdown(dropdown => dropdown
+					.addOption('source', 'Editing')
+					.addOption('preview', 'Reading')
+					.setValue(rule.mode)
+					.onChange(async (value) => {
+						rule.mode = value as ViewMode;
+						await this.plugin.saveSettings();
+					}))
+				.addExtraButton(cb => cb
+					.setIcon("cross")
+					.setTooltip("Delete Rule")
+					.onClick(async () => {
+						this.plugin.settings.folderRules.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					}));
 		});
 	}
 }

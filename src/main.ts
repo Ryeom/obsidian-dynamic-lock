@@ -38,29 +38,48 @@ export default class MyPlugin extends Plugin {
 			// Handle 'force' modes
 			const { globalMode, defaultMode, rules } = this.settings;
 
+			// 1. Force Reading (Strong Lock) - Overrides EVERYTHING
 			if (globalMode === 'force-reading') {
 				await this.setFileViewMode('preview');
 				return;
-			} else if (globalMode === 'force-editing') {
-				await this.setFileViewMode('source');
-				return;
 			}
 
-			// Handle 'auto' mode
+			// 2. Frontmatter Rules (Exceptions / Safe Mode)
 			const cache = this.app.metadataCache.getFileCache(file);
-			// Match rules
 			if (cache && cache.frontmatter) {
 				for (const rule of rules) {
+					const fileValue = cache.frontmatter[rule.attribute];
 					// Check if attribute exists and matches value
 					// We compare as string to be safe, or loose equality
-					if (cache.frontmatter[rule.attribute] == rule.value) {
+					if (fileValue == rule.value) {
 						await this.setFileViewMode(rule.mode);
 						return;
 					}
 				}
+			} else {
 			}
 
-			// No match, apply default
+			// 3. Folder Rules (Exceptions / Safe Mode)
+			// Find matching rules
+			const matchingFolderRules = this.settings.folderRules.filter(rule =>
+				file.path.startsWith(rule.path)
+			);
+
+			if (matchingFolderRules.length > 0) {
+				// Sort by path length descending (Longest Prefix Match)
+				matchingFolderRules.sort((a, b) => b.path.length - a.path.length);
+				await this.setFileViewMode(matchingFolderRules[0]!.mode);
+				return;
+			}
+
+			// 4. Force Editing (Weak Lock / Work Mode)
+			// If no specific rules matched, allow editing if global mode is editing
+			if (globalMode === 'force-editing') {
+				await this.setFileViewMode('source');
+				return;
+			}
+
+			// 5. Default Fallback
 			if (defaultMode !== 'keep') {
 				await this.setFileViewMode(defaultMode);
 			}
