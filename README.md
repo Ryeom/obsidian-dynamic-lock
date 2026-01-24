@@ -38,13 +38,6 @@ The plugin decides the mode in this order:
 
 ## Installation
 
-### Via BRAT (Recommended)
-1.  Install **BRAT** from the Community Plugins in Obsidian.
-2.  Open BRAT settings -> **Add Beta plugin**.
-3.  Enter the repository URL: `https://github.com/Ryeom/obsidian-dynamic-lock`.
-4.  Enable the plugin in Community Plugins.
-
-### Manual Installation
 1.  Clone this repository into your vault's `.obsidian/plugins/` directory.
 2.  Run `npm install` and `npm run build`.
 3.  Enable the plugin in Obsidian settings.

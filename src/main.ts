@@ -40,7 +40,7 @@ export default class MyPlugin extends Plugin {
 
 			// 1. Force Reading (Strong Lock) - Overrides EVERYTHING
 			if (globalMode === 'force-reading') {
-				await this.setFileViewMode('preview');
+				await this.setFileViewMode('preview', true);
 				return;
 			}
 
@@ -48,28 +48,28 @@ export default class MyPlugin extends Plugin {
 			const cache = this.app.metadataCache.getFileCache(file);
 			if (cache && cache.frontmatter) {
 				for (const rule of rules) {
-					const fileValue = cache.frontmatter[rule.attribute];
 					// Check if attribute exists and matches value
 					// We compare as string to be safe, or loose equality
-					if (fileValue == rule.value) {
-						await this.setFileViewMode(rule.mode);
+					if (cache.frontmatter[rule.attribute] == rule.value) {
+						await this.setFileViewMode(rule.mode, rule.mode === 'preview');
 						return;
 					}
 				}
-			} else {
 			}
 
 			// 3. Folder Rules (Exceptions / Safe Mode)
 			// Find matching rules
-			const matchingFolderRules = this.settings.folderRules.filter(rule =>
-				file.path.startsWith(rule.path)
-			);
+			if (this.settings.folderRules) {
+				const matchingFolderRules = this.settings.folderRules.filter(rule =>
+					file.path.startsWith(rule.path)
+				);
 
-			if (matchingFolderRules.length > 0) {
-				// Sort by path length descending (Longest Prefix Match)
-				matchingFolderRules.sort((a, b) => b.path.length - a.path.length);
-				await this.setFileViewMode(matchingFolderRules[0]!.mode);
-				return;
+				if (matchingFolderRules.length > 0) {
+					// Sort by path length descending (Longest Prefix Match)
+					matchingFolderRules.sort((a, b) => b.path.length - a.path.length);
+					await this.setFileViewMode(matchingFolderRules[0]!.mode, matchingFolderRules[0]!.mode === 'preview');
+					return;
+				}
 			}
 
 			// 4. Force Editing (Weak Lock / Work Mode)
@@ -81,18 +81,31 @@ export default class MyPlugin extends Plugin {
 
 			// 5. Default Fallback
 			if (defaultMode !== 'keep') {
-				await this.setFileViewMode(defaultMode);
+				await this.setFileViewMode(defaultMode, defaultMode === 'preview');
 			}
 		}));
 	}
 
-	async setFileViewMode(mode: 'source' | 'preview') {
+	async setFileViewMode(mode: 'source' | 'preview', locked: boolean = false) {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!view) return;
 
 		const state = view.getState();
 		if (state.mode !== mode) {
 			await view.setState({ ...state, mode: mode }, { history: false });
+		}
+
+		// Update Tab Header Icon
+		const leaf = view.leaf;
+		// @ts-ignore - tabHeaderEl is not in the public definition but exists
+		const tabHeader = leaf.tabHeaderEl as HTMLElement;
+
+		if (tabHeader) {
+			if (locked && mode === 'preview') {
+				tabHeader.addClass('dynamic-lock-locked');
+			} else {
+				tabHeader.removeClass('dynamic-lock-locked');
+			}
 		}
 	}
 
