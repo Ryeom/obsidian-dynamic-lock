@@ -19,13 +19,20 @@ export interface MyPluginSettings {
 	folderRules: FolderRule[];
 	defaultMode: 'keep' | ViewMode;
 	globalMode: 'auto' | 'force-reading' | 'force-editing';
+	// Time-based Lock settings
+	timeLockEnabled: boolean;
+	timeLockDays: number;
+	timeLockMetric: 'ctime' | 'mtime';
 }
 
 export const DEFAULT_SETTINGS: MyPluginSettings = {
 	rules: [],
 	folderRules: [],
 	defaultMode: 'keep',
-	globalMode: 'auto'
+	globalMode: 'auto',
+	timeLockEnabled: false,
+	timeLockDays: 30,
+	timeLockMetric: 'ctime' // Default to Creation Time as per user preference
 }
 
 export class DynamicLockSettingTab extends PluginSettingTab {
@@ -53,6 +60,46 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					this.plugin.settings.defaultMode = value as 'keep' | ViewMode;
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName('Time-based Lock')
+			.setDesc('Automatically lock files older than a certain period.')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('Enable Time Lock')
+			.setDesc('Turn on auto-locking for old notes.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.timeLockEnabled)
+				.onChange(async (value) => {
+					this.plugin.settings.timeLockEnabled = value;
+					await this.plugin.saveSettings();
+					this.display(); // Refresh to show/hide other opts
+				}));
+
+		if (this.plugin.settings.timeLockEnabled) {
+			new Setting(containerEl)
+				.setName('Review Period (Days)')
+				.setDesc('Lock file if age exceeds this many days.')
+				.addText(text => text
+					.setValue(String(this.plugin.settings.timeLockDays))
+					.onChange(async (value) => {
+						this.plugin.settings.timeLockDays = Number(value);
+						await this.plugin.saveSettings();
+					}));
+
+			new Setting(containerEl)
+				.setName('Basis Date')
+				.setDesc('Which date to use for age calculation.')
+				.addDropdown(dropdown => dropdown
+					.addOption('ctime', 'Creation Date')
+					.addOption('mtime', 'Last Modified Date')
+					.setValue(this.plugin.settings.timeLockMetric)
+					.onChange(async (value) => {
+						this.plugin.settings.timeLockMetric = value as 'ctime' | 'mtime';
+						await this.plugin.saveSettings();
+					}));
+		}
 
 		new Setting(containerEl)
 			.setName('Rules')

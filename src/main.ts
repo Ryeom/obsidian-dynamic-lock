@@ -93,14 +93,29 @@ export default class MyPlugin extends Plugin {
 				}
 			}
 
-			// 4. Force Editing (Weak Lock / Work Mode)
+			// 4. Time-based Lock (Implicit Rule)
+			if (this.settings.timeLockEnabled) {
+				const stat = file.stat;
+				if (stat) {
+					const now = Date.now();
+					const targetTime = this.settings.timeLockMetric === 'mtime' ? stat.mtime : stat.ctime;
+					const ageDays = (now - targetTime) / (1000 * 60 * 60 * 24);
+
+					if (ageDays > this.settings.timeLockDays) {
+						await this.setFileViewMode('preview', true);
+						return;
+					}
+				}
+			}
+
+			// 5. Force Editing (Weak Lock / Work Mode)
 			// If no specific rules matched, allow editing if global mode is editing
 			if (globalMode === 'force-editing') {
 				await this.setFileViewMode('source');
 				return;
 			}
 
-			// 5. Default Fallback
+			// 6. Default Fallback
 			if (defaultMode !== 'keep') {
 				await this.setFileViewMode(defaultMode, defaultMode === 'preview');
 			}
