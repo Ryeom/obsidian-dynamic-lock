@@ -1,73 +1,80 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { App, Editor, MarkdownView, Modal, Notice, Plugin } from 'obsidian';
+import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab } from "./settings";
 
 // Remember to rename these classes and interfaces!
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
+	statusBarItem: HTMLElement;
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
-		});
-
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new DynamicLockSettingTab(this.app, this));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
+		// Add Status Bar Item
+		this.statusBarItem = this.addStatusBarItem();
+		this.updateStatusBar();
+		this.statusBarItem.onClickEvent(async () => {
+			const modes: Array<MyPluginSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
+			const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
+			const nextIndex = (currentIndex + 1) % modes.length;
+			this.settings.globalMode = modes[nextIndex]!;
+			await this.saveSettings();
+			new Notice(`Dynamic Lock: Switched to ${this.settings.globalMode}`);
+
+			// Re-evaluate current file
+			const file = this.app.workspace.getActiveFile();
+			if (file) {
+				// Trigger the file-open logic manually
+				this.app.workspace.trigger('file-open', file);
+			}
 		});
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		this.registerEvent(this.app.workspace.on('file-open', async (file) => {
+			if (!file) return;
 
+			// Handle 'force' modes
+			const { globalMode, defaultMode, rules } = this.settings;
+
+			if (globalMode === 'force-reading') {
+				await this.setFileViewMode('preview');
+				return;
+			} else if (globalMode === 'force-editing') {
+				await this.setFileViewMode('source');
+				return;
+			}
+
+			// Handle 'auto' mode
+			const cache = this.app.metadataCache.getFileCache(file);
+			// Match rules
+			if (cache && cache.frontmatter) {
+				for (const rule of rules) {
+					// Check if attribute exists and matches value
+					// We compare as string to be safe, or loose equality
+					if (cache.frontmatter[rule.attribute] == rule.value) {
+						await this.setFileViewMode(rule.mode);
+						return;
+					}
+				}
+			}
+
+			// No match, apply default
+			if (defaultMode !== 'keep') {
+				await this.setFileViewMode(defaultMode);
+			}
+		}));
+	}
+
+	async setFileViewMode(mode: 'source' | 'preview') {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) return;
+
+		const state = view.getState();
+		if (state.mode !== mode) {
+			await view.setState({ ...state, mode: mode }, { history: false });
+		}
 	}
 
 	onunload() {
@@ -79,6 +86,19 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.updateStatusBar();
+	}
+
+	updateStatusBar() {
+		if (!this.statusBarItem) return;
+
+		let text = 'Lock: ';
+		switch (this.settings.globalMode) {
+			case 'auto': text += 'Auto'; break;
+			case 'force-reading': text += 'Reading'; break;
+			case 'force-editing': text += 'Editing'; break;
+		}
+		this.statusBarItem.setText(text);
 	}
 }
 
@@ -88,12 +108,12 @@ class SampleModal extends Modal {
 	}
 
 	onOpen() {
-		let {contentEl} = this;
+		let { contentEl } = this;
 		contentEl.setText('Woah!');
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
