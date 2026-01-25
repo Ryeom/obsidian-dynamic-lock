@@ -1,5 +1,5 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, setIcon } from 'obsidian';
-import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab } from "./settings";
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, setIcon, TFile } from 'obsidian';
+import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab, ViewMode } from "./settings";
 
 // Remember to rename these classes and interfaces!
 
@@ -7,13 +7,78 @@ export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	statusBarItem: HTMLElement;
 
+	getRequiredViewMode(file: TFile): ViewMode | null {
+		const { globalMode, defaultMode, rules } = this.settings;
+
+		// 1. Force Reading (Strong Lock)
+		if (globalMode === 'force-reading') return 'preview';
+
+		// 2. Frontmatter Rules
+		const cache = this.app.metadataCache.getFileCache(file);
+		if (cache && cache.frontmatter) {
+			for (const rule of rules) {
+				if (cache.frontmatter[rule.attribute] == rule.value) {
+					return rule.mode;
+				}
+			}
+		}
+
+		// 3. Folder Rules
+		if (this.settings.folderRules) {
+			const matchingFolderRules = this.settings.folderRules.filter(rule =>
+				file.path.startsWith(rule.path)
+			);
+
+			if (matchingFolderRules.length > 0) {
+				matchingFolderRules.sort((a, b) => b.path.length - a.path.length);
+				return matchingFolderRules[0]!.mode;
+			}
+		}
+
+		// 4. Time-based Lock (Implicit Rule)
+		if (this.settings.timeLockEnabled) {
+			// @ts-ignore
+			const stat = file.stat;
+			if (stat) {
+				const now = Date.now();
+				const targetTime = this.settings.timeLockMetric === 'mtime' ? stat.mtime : stat.ctime;
+				const ageDays = (now - targetTime) / (1000 * 60 * 60 * 24);
+
+				if (ageDays > this.settings.timeLockDays) {
+					return 'preview';
+				}
+			}
+		}
+
+		// 5. Force Editing
+		if (globalMode === 'force-editing') return 'source';
+
+		// 6. Default Fallback
+		if (defaultMode !== 'keep') {
+			return defaultMode;
+		}
+
+		return null;
+	}
+
+	async processFileMode(file: TFile) {
+		const requiredMode = this.getRequiredViewMode(file);
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) return;
+
+		if (requiredMode) {
+			await this.setFileViewMode(requiredMode, requiredMode === 'preview');
+		} else {
+			// No rule matches, ensure icon is removed
+			this.updateTabLockIcon(view, false);
+		}
+	}
+
 	async onload() {
 		await this.loadSettings();
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new DynamicLockSettingTab(this.app, this));
 
-		// Add Status Bar Item
 		this.statusBarItem = this.addStatusBarItem();
 		this.updateStatusBar();
 		this.statusBarItem.onClickEvent(async () => {
@@ -23,106 +88,48 @@ export default class MyPlugin extends Plugin {
 			await this.setGlobalMode(modes[nextIndex]!);
 		});
 
-		// Add Commands
+		// Commands...
 		this.addCommand({
-			id: 'cycle-global-mode',
-			name: 'Cycle Global Mode',
-			callback: async () => {
-				const modes: Array<MyPluginSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
+			id: 'cycle-global-mode', name: 'Cycle Global Mode', callback: async () => {
+				const modes: ['auto', 'force-reading', 'force-editing'] = ['auto', 'force-reading', 'force-editing'];
 				const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
 				const nextIndex = (currentIndex + 1) % modes.length;
 				await this.setGlobalMode(modes[nextIndex]!);
 			}
 		});
+		this.addCommand({ id: 'set-global-mode-auto', name: 'Set Global Mode to Auto', callback: async () => this.setGlobalMode('auto') });
+		this.addCommand({ id: 'set-global-mode-reading', name: 'Set Global Lock (Reading)', callback: async () => this.setGlobalMode('force-reading') });
+		this.addCommand({ id: 'set-global-mode-editing', name: 'Set Global Mode to Editing', callback: async () => this.setGlobalMode('force-editing') });
 
-		this.addCommand({
-			id: 'set-global-mode-auto',
-			name: 'Set Global Mode to Auto',
-			callback: async () => this.setGlobalMode('auto')
-		});
-
-		this.addCommand({
-			id: 'set-global-mode-reading',
-			name: 'Set Global Lock (Reading)',
-			callback: async () => this.setGlobalMode('force-reading')
-		});
-
-		this.addCommand({
-			id: 'set-global-mode-editing',
-			name: 'Set Global Mode to Editing',
-			callback: async () => this.setGlobalMode('force-editing')
-		});
-
+		// Event: File Open
 		this.registerEvent(this.app.workspace.on('file-open', async (file) => {
 			if (!file) return;
-
-			// Handle 'force' modes
-			const { globalMode, defaultMode, rules } = this.settings;
-
-			// 1. Force Reading (Strong Lock) - Overrides EVERYTHING
-			if (globalMode === 'force-reading') {
-				await this.setFileViewMode('preview', true);
-				return;
-			}
-
-			// 2. Frontmatter Rules (Exceptions / Safe Mode)
-			const cache = this.app.metadataCache.getFileCache(file);
-			if (cache && cache.frontmatter) {
-				for (const rule of rules) {
-					// Check if attribute exists and matches value
-					// We compare as string to be safe, or loose equality
-					if (cache.frontmatter[rule.attribute] == rule.value) {
-						await this.setFileViewMode(rule.mode, rule.mode === 'preview');
-						return;
-					}
-				}
-			}
-
-			// 3. Folder Rules (Exceptions / Safe Mode)
-			// Find matching rules
-			if (this.settings.folderRules) {
-				const matchingFolderRules = this.settings.folderRules.filter(rule =>
-					file.path.startsWith(rule.path)
-				);
-
-				if (matchingFolderRules.length > 0) {
-					// Sort by path length descending (Longest Prefix Match)
-					matchingFolderRules.sort((a, b) => b.path.length - a.path.length);
-					await this.setFileViewMode(matchingFolderRules[0]!.mode, matchingFolderRules[0]!.mode === 'preview');
-					return;
-				}
-			}
-
-			// 4. Time-based Lock (Implicit Rule)
-			if (this.settings.timeLockEnabled) {
-				const stat = file.stat;
-				if (stat) {
-					const now = Date.now();
-					const targetTime = this.settings.timeLockMetric === 'mtime' ? stat.mtime : stat.ctime;
-					const ageDays = (now - targetTime) / (1000 * 60 * 60 * 24);
-
-					if (ageDays > this.settings.timeLockDays) {
-						await this.setFileViewMode('preview', true);
-						return;
-					}
-				}
-			}
-
-			// 5. Force Editing (Weak Lock / Work Mode)
-			// If no specific rules matched, allow editing if global mode is editing
-			if (globalMode === 'force-editing') {
-				await this.setFileViewMode('source');
-				return;
-			}
-
-			// 6. Default Fallback
-			if (defaultMode !== 'keep') {
-				await this.setFileViewMode(defaultMode, defaultMode === 'preview');
-			}
+			await this.processFileMode(file);
 		}));
+
+		// Event: Layout Change & Active Leaf Change
+		// Using a debounced handler or just shared handler to catch mode switches.
+		const handleViewUpdate = () => {
+			const file = this.app.workspace.getActiveFile();
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!file || !view) return;
+
+			// If user in Source mode, always remove icon
+			// If user in Preview mode, check if it SHOULD be locked
+			if (view.getMode() === 'source') {
+				this.updateTabLockIcon(view, false);
+			} else {
+				const requiredMode = this.getRequiredViewMode(file);
+				this.updateTabLockIcon(view, requiredMode === 'preview');
+			}
+		};
+
+		this.registerEvent(this.app.workspace.on('layout-change', handleViewUpdate));
+		this.registerEvent(this.app.workspace.on('active-leaf-change', handleViewUpdate));
+		// Also listen to css-change in case of theme updates affecting icons? Unlikely needed.
 	}
 
-	async setFileViewMode(mode: 'source' | 'preview', locked: boolean = false) {
+	async setFileViewMode(mode: ViewMode, locked: boolean = false) {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!view) return;
 
@@ -131,13 +138,16 @@ export default class MyPlugin extends Plugin {
 			await view.setState({ ...state, mode: mode }, { history: false });
 		}
 
-		// Update Tab Header Icon
+		this.updateTabLockIcon(view, locked);
+	}
+
+	updateTabLockIcon(view: MarkdownView, locked: boolean) {
 		const leaf = view.leaf;
 		// @ts-ignore - tabHeaderEl is not in the public definition but exists
 		const tabHeader = leaf.tabHeaderEl as HTMLElement;
 
 		if (tabHeader) {
-			if (locked && mode === 'preview') {
+			if (locked) {
 				tabHeader.addClass('dynamic-lock-locked');
 			} else {
 				tabHeader.removeClass('dynamic-lock-locked');

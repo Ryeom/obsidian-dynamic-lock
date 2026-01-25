@@ -1,4 +1,4 @@
-# Dynamic Lock for Obsidian
+# 🔒 Dynamic Lock for Obsidian
 
 > **Dynamically secure your workflow.**  
 > Automatically switch between **Reading** and **Editing** modes based on file properties, folders, or time.
@@ -9,35 +9,35 @@ Move seamlessly between **writing** and **referencing**. Protect your finished n
 
 ---
 
-## Features
+## ✨ Features
 
-- **Smart Lock Logic**:
+- **🧠 Smart Lock Logic**:
     - **Strong Lock (Reading)**: Permanently locks files for review or presentation.
     - **Safe Edit (Editing)**: Allows editing but respects explicit locks on archived files.
-- **Folder Rules**: Automatically lock files in specific folders (e.g., `Archives/`, `References/`). Supports Longest Prefix Match.
-- **Frontmatter Rules**: Lock individual files using metadata (e.g., `status: done`, `type: archive`).
-- **Time-based Auto Lock**: Automatically lock old notes based on creation or modification date. (e.g., "Lock creation after 30 days").
-- **Visual Cues**: 
+- **📂 Folder Rules**: Automatically lock files in specific folders (e.g., `Archives/`, `References/`). Supports Longest Prefix Match.
+- **🏷️ Frontmatter Rules**: Lock individual files using metadata (e.g., `status: done`, `type: archive`).
+- **⏳ Time-based Auto Lock**: Automatically lock old notes based on creation or modification date. (e.g., "Lock creation after 30 days").
+- **🎨 Visual Cues**: 
     - **Status Bar**: See current global mode at a glance (✨ Auto, 🔒 Locked, 🔓 Editing).
-    - **Tab Icon**: A lock icon appears on the tab header of locked files.
-- **Hotkeys & Commands**: Cycle modes or toggle locks instantly via Command Palette.
+    - **Tab Icon**: A 🔒 icon appears on the tab header of locked files.
+- **⌨️ Hotkeys & Commands**: Cycle modes or toggle locks instantly via Command Palette.
 
 ---
 
-## How It Works
+## 🚀 How It Works
 
 Dynamic Lock determines the view mode based on a **Priority System**:
 
-1.  **Global Force Reading** (Locked): Overrides EVERYTHING. Useful for presentations.
+1.  **Global Force Reading** (🔒): Overrides EVERYTHING. Useful for presentations.
 2.  **Frontmatter Rules**: Explicit file-level control (`status: done` -> Reading).
 3.  **Folder Rules**: Section-level control (`Archives/` -> Reading).
 4.  **Time-based Lock**: (If enabled) Locks old files automatically.
-5.  **Global Force Editing** (Editing): Forces Editing mode unless explicitly locked by rules above.
+5.  **Global Force Editing** (🔓): Forces Editing mode unless explicitly locked by rules above.
 6.  **Default**: Fallback behavior (Keep current / Reading / Editing).
 
 ---
 
-## Usage
+## 🛠️ Usage
 
 ### 1. Global Modes (Click Status Bar)
 | Icon | Mode | Description |
@@ -48,18 +48,18 @@ Dynamic Lock determines the view mode based on a **Priority System**:
 
 > **Tip**: You can assign a hotkey to `Dynamic Lock: Cycle Global Mode` for quick switching!
 
-### 2. Time-based Locking
+### 2. Time-based Locking ⏳
 Forget about manually locking files. 
 - Go to **Settings > Time-based Lock**.
 - Enable it and set a period (e.g., **30 Days**).
 - Choose **Creation Date** (good for Daily Notes/Diaries) or **Modified Date** (good for Wikis).
 
 ### 3. Visual Feedback
-Locked files are instantly recognizable by the **Lock Icon** next to the file title in the tab header.
+Locked files are instantly recognizable by the **Lock Icon (🔒)** next to the file title in the tab header.
 
 ---
 
-## Installation
+## ⚙️ Installation
 
 1.  Open **Settings > Community Plugins** in Obsidian.
 2.  Turn off **Safe Mode**.
@@ -73,7 +73,7 @@ Locked files are instantly recognizable by the **Lock Icon** next to the file ti
 
 ---
 
-## Commands
+## ⌨️ Commands
 
 | Command | Action |
 | :--- | :--- |
