@@ -1,22 +1,32 @@
 /* Dynamic Lock - Locked Tab Icon */
 .workspace-tab-header.dynamic-lock-locked .workspace-tab-header-inner-title::before {
     content: "";
-    margin-right: 6px;
+
+    /* Layout: behave like text to avoid breaking ellipsis */
+    display: inline-block;
+    vertical-align: sub;
+    /* Align nicely with text */
+
+    /* Spacing */
+    margin-right: 4px;
     width: 14px;
     height: 14px;
-    /* Use Obsidian's default icon color variable */
+
+    /* Color: Safe fallback to icon color */
     background-color: var(--icon-color);
+    opacity: 0.7;
+    /* Slight transparency for better blend */
+
+    /* Mask for the lock icon shape */
     -webkit-mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='16' r='1'/%3E%3Crect x='3' y='10' width='18' height='12' rx='2'/%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='16' r='1'/%3E%3Crect x='3' y='10' width='18' height='12' rx='2'/%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3'/%3E%3C/svg%3E");
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
     -webkit-mask-size: contain;
     mask-size: contain;
-    display: inline-block;
 }
 
-/* Ensure the icon is visible and aligned */
-.workspace-tab-header.dynamic-lock-locked .workspace-tab-header-inner-title {
-    display: flex;
-    align-items: center;
-}
+/* DELETED: Do not enforce flex layout on the title container. 
+   This avoids conflicts with Obsidian's internal layout engines. 
+   .workspace-tab-header-inner-title { display: flex; ... } 
+*/

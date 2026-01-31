@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, setIcon, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab, ViewMode } from "./settings";
 
 // Remember to rename these classes and interfaces!
@@ -6,9 +6,10 @@ import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab, ViewMode } f
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	statusBarItem: HTMLElement;
+	private lastFilePerLeaf = new WeakMap<WorkspaceLeaf, TFile>();
 
 	getRequiredViewMode(file: TFile): ViewMode | null {
-		const { globalMode, defaultMode, rules } = this.settings;
+		const { globalMode, rules } = this.settings;
 
 		// 1. Force Reading (Strong Lock)
 		if (globalMode === 'force-reading') return 'preview';
@@ -54,24 +55,45 @@ export default class MyPlugin extends Plugin {
 		if (globalMode === 'force-editing') return 'source';
 
 		// 6. Default Fallback
-		if (defaultMode !== 'keep') {
-			return defaultMode;
-		}
+		// Removed: Now returns null if no specific rule matches.
+		// The decision to use default mode or keep current mode is handled in processFileMode.
 
 		return null;
 	}
 
 	async processFileMode(file: TFile) {
-		const requiredMode = this.getRequiredViewMode(file);
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!view) return;
 
+		const leaf = view.leaf;
+		const requiredMode = this.getRequiredViewMode(file);
+
 		if (requiredMode) {
+			// Strict rule match (Lock, Folder, Time, Global Force)
 			await this.setFileViewMode(requiredMode, requiredMode === 'preview');
 		} else {
-			// No rule matches, ensure icon is removed
-			this.updateTabLockIcon(view, false);
+			// No strict rule - Logic to distinguish Navigation vs Tab Switch
+			const lastFile = this.lastFilePerLeaf.get(leaf);
+			const isNavigation = lastFile?.path !== file.path;
+
+			if (isNavigation) {
+				// New file opened in this leaf. 
+				// Default behavior: Go to Editing, unless user explicitly set defaultMode to 'preview'
+				const targetMode = this.settings.defaultMode === 'preview' ? 'preview' : 'source';
+				// If defaultMode is 'keep', we treat navigation as "Unlock/Edit" by default for non-locked files.
+
+				await this.setFileViewMode(targetMode, false);
+			} else {
+				// Same file (Tab switch to existing tab). 
+				// Do NOTHING. Keep whatever mode the user set manually or was previously set.
+
+				// Ensure icon matches current mode (Reading = Locked Icon)
+				this.updateTabLockIcon(view, view.getMode() === 'preview');
+			}
 		}
+
+		// Update state for next check
+		this.lastFilePerLeaf.set(leaf, file);
 	}
 
 	async onload() {
@@ -107,6 +129,7 @@ export default class MyPlugin extends Plugin {
 			await this.processFileMode(file);
 		}));
 
+
 		// Event: Layout Change & Active Leaf Change
 		// Using a debounced handler or just shared handler to catch mode switches.
 		const handleViewUpdate = () => {
@@ -114,14 +137,9 @@ export default class MyPlugin extends Plugin {
 			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 			if (!file || !view) return;
 
-			// If user in Source mode, always remove icon
-			// If user in Preview mode, check if it SHOULD be locked
-			if (view.getMode() === 'source') {
-				this.updateTabLockIcon(view, false);
-			} else {
-				const requiredMode = this.getRequiredViewMode(file);
-				this.updateTabLockIcon(view, requiredMode === 'preview');
-			}
+			// UX Change: Always show lock icon if in 'preview' (Reading) mode, 
+			// regardless of whether it's forced or manual.
+			this.updateTabLockIcon(view, view.getMode() === 'preview');
 		};
 
 		this.registerEvent(this.app.workspace.on('layout-change', handleViewUpdate));
@@ -138,7 +156,11 @@ export default class MyPlugin extends Plugin {
 			await view.setState({ ...state, mode: mode }, { history: false });
 		}
 
-		this.updateTabLockIcon(view, locked);
+		// Force icon to match mode (UX decision: Reading = Locked Icon)
+		// We defer to the 'locked' argument if provided for legacy reasons, 
+		// BUT for this specific UX change, 'locked' should basically be 'isPreview'.
+		// To be safe and consistent with the new UX:
+		this.updateTabLockIcon(view, mode === 'preview');
 	}
 
 	updateTabLockIcon(view: MarkdownView, locked: boolean) {
