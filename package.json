@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-dynamic-lock",
 	"version": "1.3.3",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Dynamically switch between Reading and Editing modes based on rules",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

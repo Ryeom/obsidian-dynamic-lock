@@ -1,5 +1,5 @@
 import { App, MarkdownView, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { DynamicLockSettings, ViewMode } from './settings';
+import { DynamicLockSettings, ViewMode } from './types';
 import { getRequiredViewMode } from './lockResolver';
 
 export interface ViewControllerDeps {
@@ -37,9 +37,8 @@ export class ViewController {
 			const lastFile = this.lastFilePerLeaf.get(leaf);
 			const isNavigation = lastFile?.path !== file.path;
 
-			if (isNavigation) {
-				const targetMode = settings.defaultMode === 'preview' ? 'preview' : 'source';
-				await this.setFileViewMode(targetMode);
+			if (isNavigation && settings.defaultMode !== 'keep') {
+				await this.setFileViewMode(settings.defaultMode);
 			} else {
 				this.updateTabLockIcon(view, view.getMode() === 'preview');
 			}

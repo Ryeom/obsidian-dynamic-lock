@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting, ButtonComponent, AbstractInputSuggest, TFolder } from "obsidian";
 import DynamicLockPlugin from "./main";
+import { DynamicLockSettings, ViewMode } from "./types";
 
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 	inputEl: HTMLInputElement;
@@ -32,40 +33,6 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 		this.inputEl.trigger("input");
 		this.close();
 	}
-}
-
-export type ViewMode = 'source' | 'preview';
-
-export interface Rule {
-	attribute: string;
-	value: string;
-	mode: ViewMode;
-}
-
-export interface FolderRule {
-	path: string;
-	mode: ViewMode;
-}
-
-export interface DynamicLockSettings {
-	rules: Rule[];
-	folderRules: FolderRule[];
-	defaultMode: 'keep' | ViewMode;
-	globalMode: 'auto' | 'force-reading' | 'force-editing';
-	// Time-based Lock settings
-	timeLockEnabled: boolean;
-	timeLockDays: number;
-	timeLockMetric: 'ctime' | 'mtime';
-}
-
-export const DEFAULT_SETTINGS: DynamicLockSettings = {
-	rules: [],
-	folderRules: [],
-	defaultMode: 'keep',
-	globalMode: 'auto',
-	timeLockEnabled: false,
-	timeLockDays: 30,
-	timeLockMetric: 'ctime' // Default to Creation Time as per user preference
 }
 
 export class DynamicLockSettingTab extends PluginSettingTab {
@@ -107,7 +74,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.timeLockEnabled = value;
 					await this.plugin.saveSettings();
-					this.display(); // Refresh to show/hide other opts
+					this.display();
 				}));
 
 		if (this.plugin.settings.timeLockEnabled) {
@@ -142,7 +109,6 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 			.setDesc('Define rules to dynamically switch modes based on file properties.')
 			.setHeading();
 
-		// Add Rule Button
 		new Setting(containerEl)
 			.addButton((btn: ButtonComponent) => {
 				btn
@@ -159,7 +125,6 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					});
 			});
 
-		// Render Rules
 		this.plugin.settings.rules.forEach((rule, index) => {
 			new Setting(containerEl)
 				.addText(text => text
@@ -199,7 +164,6 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 			.setDesc('Define rules based on file path. Longest prefix match will be applied.')
 			.setHeading();
 
-		// Add Folder Rule Button
 		new Setting(containerEl)
 			.addButton((btn: ButtonComponent) => {
 				btn
@@ -215,7 +179,6 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					});
 			});
 
-		// Render Folder Rules
 		this.plugin.settings.folderRules.forEach((rule, index) => {
 			new Setting(containerEl)
 				.addText(text => {

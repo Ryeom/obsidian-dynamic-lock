@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import { DynamicLockSettings, ViewMode } from './settings';
+import { DynamicLockSettings, ViewMode } from './types';
 
 /**
  * Determines the required view mode for a file based on the priority system:

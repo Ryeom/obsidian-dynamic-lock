@@ -1,5 +1,6 @@
 import { Plugin } from 'obsidian';
-import { DEFAULT_SETTINGS, DynamicLockSettings, DynamicLockSettingTab } from './settings';
+import { DEFAULT_SETTINGS, DynamicLockSettings } from './types';
+import { DynamicLockSettingTab } from './settings';
 import { ViewController } from './viewController';
 
 export default class DynamicLockPlugin extends Plugin {
