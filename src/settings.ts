@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, ButtonComponent, AbstractInputSuggest, TFolder } from "obsidian";
-import MyPlugin from "./main";
+import DynamicLockPlugin from "./main";
 
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 	inputEl: HTMLInputElement;
@@ -47,7 +47,7 @@ export interface FolderRule {
 	mode: ViewMode;
 }
 
-export interface MyPluginSettings {
+export interface DynamicLockSettings {
 	rules: Rule[];
 	folderRules: FolderRule[];
 	defaultMode: 'keep' | ViewMode;
@@ -58,7 +58,7 @@ export interface MyPluginSettings {
 	timeLockMetric: 'ctime' | 'mtime';
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: DynamicLockSettings = {
 	rules: [],
 	folderRules: [],
 	defaultMode: 'keep',
@@ -69,9 +69,9 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 }
 
 export class DynamicLockSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: DynamicLockPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: DynamicLockPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -117,8 +117,11 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 				.addText(text => text
 					.setValue(String(this.plugin.settings.timeLockDays))
 					.onChange(async (value) => {
-						this.plugin.settings.timeLockDays = Number(value);
-						await this.plugin.saveSettings();
+						const num = parseInt(value, 10);
+						if (!isNaN(num) && num > 0) {
+							this.plugin.settings.timeLockDays = num;
+							await this.plugin.saveSettings();
+						}
 					}));
 
 			new Setting(containerEl)
@@ -158,12 +161,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 		// Render Rules
 		this.plugin.settings.rules.forEach((rule, index) => {
-			const div = containerEl.createDiv({ cls: 'dynamic-lock-rule-container' });
-			// Styling can be done in styles.css, but for now we rely on default layout or simple styles if needed.
-			// Ideally we want them in a row. Obsidian Settings usually stack, but we can try to put them in one Setting item or a div.
-
-			// Using a Setting for each rule row
-			const s = new Setting(containerEl)
+			new Setting(containerEl)
 				.addText(text => text
 					.setPlaceholder('Attribute (e.g. status)')
 					.setValue(rule.attribute)
@@ -194,8 +192,6 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 						this.display();
 					}));
-
-			// Removing the default border if we want a tighter look, but standard is fine.
 		});
 
 		new Setting(containerEl)
@@ -221,8 +217,6 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 		// Render Folder Rules
 		this.plugin.settings.folderRules.forEach((rule, index) => {
-			const div = containerEl.createDiv({ cls: 'dynamic-lock-rule-container' });
-
 			new Setting(containerEl)
 				.addText(text => {
 					text

@@ -3,7 +3,7 @@
 > **Dynamically secure your workflow.**  
 > Automatically switch between **Reading** and **Editing** modes based on file properties, folders, or time.
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-1.3.3-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 Move seamlessly between **writing** and **referencing**. Protect your finished notes from accidental edits while keeping your active drafts ready to write.
 
@@ -19,7 +19,7 @@ Move seamlessly between **writing** and **referencing**. Protect your finished n
 - **⏳ Time-based Auto Lock**: Automatically lock old notes based on creation or modification date. (e.g., "Lock creation after 30 days").
 - **🎨 Visual Cues**: 
     - **Status Bar**: See current global mode at a glance (✨ Auto, 🔒 Locked, 🔓 Editing).
-    - **Tab Icon**: A 🔒 icon appears on the tab header of locked files.
+    - **Tab Icon**: A 🔒 icon appears on the tab header whenever you are in **Reading Mode**.
 - **⌨️ Hotkeys & Commands**: Cycle modes or toggle locks instantly via Command Palette.
 
 ---
@@ -32,8 +32,11 @@ Dynamic Lock determines the view mode based on a **Priority System**:
 2.  **Frontmatter Rules**: Explicit file-level control (`status: done` -> Reading).
 3.  **Folder Rules**: Section-level control (`Archives/` -> Reading).
 4.  **Time-based Lock**: (If enabled) Locks old files automatically.
-5.  **Global Force Editing** (🔓): Forces Editing mode unless explicitly locked by rules above.
-6.  **Default**: Fallback behavior (Keep current / Reading / Editing).
+5.  **Global Force Editing** (🔓): Forces Editing mode.
+6.  **Auto Mode** (✨):
+    - **Strict Rules**: Locks files matching the rules above.
+    - **Free Navigation**: New files default to **Editing Mode** unless locked.
+    - **Tab Persistence**: Switching tabs preserves your manual mode (Reading/Editing) for open files.
 
 ---
 
@@ -42,9 +45,9 @@ Dynamic Lock determines the view mode based on a **Priority System**:
 ### 1. Global Modes (Click Status Bar)
 | Icon | Mode | Description |
 | :--- | :--- | :--- | 
-| ✨ | **Auto** | The **Smart Mode**. Follows all your defined rules. |
+| ✨ | **Auto** | The **Smart Mode**. Locks matched files, keeps others editable, and remembers your tab state. |
 | 🔒 | **Reading** | **Presentation Mode**. Forces ALL files to Reading view. |
-| 🔓 | **Editing** | **Work Mode**. Forces Editing view (except for explicitly locked folders/files). |
+| 🔓 | **Editing** | **Work Mode**. Forces Editing view (resets manual reading checks). |
 
 > **Tip**: You can assign a hotkey to `Dynamic Lock: Cycle Global Mode` for quick switching!
 
@@ -55,7 +58,9 @@ Forget about manually locking files.
 - Choose **Creation Date** (good for Daily Notes/Diaries) or **Modified Date** (good for Wikis).
 
 ### 3. Visual Feedback
-Locked files are instantly recognizable by the **Lock Icon (🔒)** next to the file title in the tab header.
+Locked status is clear and intuitive:
+- **Lock Icon (🔒)**: Appears on the tab header whenever the file is in **Reading Mode** (whether enforced by rule or set manually).
+- **No Icon**: The file is in **Editing Mode**.
 
 ---
 

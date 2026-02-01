@@ -1,10 +1,8 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
-import { DEFAULT_SETTINGS, MyPluginSettings, DynamicLockSettingTab, ViewMode } from "./settings";
+import { MarkdownView, Notice, Plugin, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
+import { DEFAULT_SETTINGS, DynamicLockSettings, DynamicLockSettingTab, ViewMode } from "./settings";
 
-// Remember to rename these classes and interfaces!
-
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class DynamicLockPlugin extends Plugin {
+	settings: DynamicLockSettings;
 	statusBarItem: HTMLElement;
 	private lastFilePerLeaf = new WeakMap<WorkspaceLeaf, TFile>();
 
@@ -104,7 +102,7 @@ export default class MyPlugin extends Plugin {
 		this.statusBarItem = this.addStatusBarItem();
 		this.updateStatusBar();
 		this.statusBarItem.onClickEvent(async () => {
-			const modes: Array<MyPluginSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
+			const modes: Array<DynamicLockSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
 			const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
 			const nextIndex = (currentIndex + 1) % modes.length;
 			await this.setGlobalMode(modes[nextIndex]!);
@@ -184,7 +182,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<DynamicLockSettings>);
 	}
 
 	async saveSettings() {
@@ -192,7 +190,7 @@ export default class MyPlugin extends Plugin {
 		this.updateStatusBar();
 	}
 
-	async setGlobalMode(mode: MyPluginSettings['globalMode']) {
+	async setGlobalMode(mode: DynamicLockSettings['globalMode']) {
 		this.settings.globalMode = mode;
 		await this.saveSettings();
 		new Notice(`Dynamic Lock: Switched to ${mode}`);
@@ -209,11 +207,10 @@ export default class MyPlugin extends Plugin {
 		if (!this.statusBarItem) return;
 
 		this.statusBarItem.empty();
+		this.statusBarItem.removeClass('mod-error', 'mod-success');
 
-		// Icon
 		let iconName = 'sparkles';
 		let text = ' Auto';
-		let cls = '';
 
 		switch (this.settings.globalMode) {
 			case 'auto':
@@ -223,40 +220,20 @@ export default class MyPlugin extends Plugin {
 			case 'force-reading':
 				iconName = 'lock';
 				text = ' Locked';
-				cls = 'mod-error';
+				this.statusBarItem.addClass('mod-error');
 				break;
 			case 'force-editing':
 				iconName = 'lock-open';
 				text = ' Editing';
-				cls = 'mod-success';
+				this.statusBarItem.addClass('mod-success');
 				break;
 		}
 
-		// Obsidian API: setIcon(parent, iconId)
-		// We create a span for the icon
 		const iconSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-icon' });
 		setIcon(iconSpan, iconName);
-		// Add margin to icon for spacing
 		iconSpan.style.marginRight = '4px';
 
-		// Text
 		const textSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-segment' });
 		textSpan.setText(text);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
 	}
 }
