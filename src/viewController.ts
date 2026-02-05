@@ -125,6 +125,13 @@ export class ViewController {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!file || !view) return;
 
-		this.updateTabLockIcon(view, view.getMode() === 'preview');
+		const settings = this.getSettings();
+		const requiredMode = getRequiredViewMode(this.app, file, settings);
+
+		if (requiredMode && view.getMode() !== requiredMode) {
+			this.setFileViewMode(requiredMode);
+		} else {
+			this.updateTabLockIcon(view, view.getMode() === 'preview');
+		}
 	}
 }
