@@ -24,7 +24,7 @@ export function getRequiredViewMode(
 	const cache = app.metadataCache.getFileCache(file);
 	if (cache?.frontmatter) {
 		for (const rule of rules) {
-			if (cache.frontmatter[rule.attribute] == rule.value) {
+			if (String(cache.frontmatter[rule.attribute]) === rule.value) {
 				return rule.mode;
 			}
 		}
@@ -32,9 +32,10 @@ export function getRequiredViewMode(
 
 	// 3. Folder Rules (longest prefix match)
 	if (folderRules?.length) {
-		const matchingRules = folderRules.filter(rule =>
-			file.path.startsWith(rule.path)
-		);
+		const matchingRules = folderRules.filter(rule => {
+			const normalizedPath = rule.path.endsWith('/') ? rule.path : rule.path + '/';
+			return file.path.startsWith(normalizedPath);
+		});
 
 		if (matchingRules.length > 0) {
 			matchingRules.sort((a, b) => b.path.length - a.path.length);

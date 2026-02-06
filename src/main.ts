@@ -38,7 +38,7 @@ export default class DynamicLockPlugin extends Plugin {
 	private registerCommands() {
 		this.addCommand({
 			id: 'cycle-global-mode',
-			name: 'Cycle Global Mode',
+			name: 'Cycle global mode',
 			callback: async () => {
 				const modes: ['auto', 'force-reading', 'force-editing'] = ['auto', 'force-reading', 'force-editing'];
 				const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
@@ -49,19 +49,19 @@ export default class DynamicLockPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'set-global-mode-auto',
-			name: 'Set Global Mode to Auto',
+			name: 'Set global mode to auto',
 			callback: async () => this.viewController.setGlobalMode('auto')
 		});
 
 		this.addCommand({
 			id: 'set-global-mode-reading',
-			name: 'Set Global Lock (Reading)',
+			name: 'Set global lock (reading)',
 			callback: async () => this.viewController.setGlobalMode('force-reading')
 		});
 
 		this.addCommand({
 			id: 'set-global-mode-editing',
-			name: 'Set Global Mode to Editing',
+			name: 'Set global mode to editing',
 			callback: async () => this.viewController.setGlobalMode('force-editing')
 		});
 	}

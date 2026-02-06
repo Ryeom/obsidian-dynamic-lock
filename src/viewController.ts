@@ -114,7 +114,7 @@ export class ViewController {
 
 		const iconSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-icon' });
 		setIcon(iconSpan, iconName);
-		iconSpan.style.marginRight = '4px';
+		iconSpan.setCssProps({ 'margin-right': '4px' });
 
 		const textSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-segment' });
 		textSpan.setText(text);
@@ -129,7 +129,7 @@ export class ViewController {
 		const requiredMode = getRequiredViewMode(this.app, file, settings);
 
 		if (requiredMode && view.getMode() !== requiredMode) {
-			this.setFileViewMode(requiredMode);
+			void this.setFileViewMode(requiredMode);
 		} else {
 			this.updateTabLockIcon(view, view.getMode() === 'preview');
 		}
