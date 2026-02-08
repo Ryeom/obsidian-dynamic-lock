@@ -69,7 +69,7 @@ Locked status is clear and intuitive:
 ## Installation
 
 1.  Open **Settings > Community Plugins** in Obsidian.
-2.  Turn off **Safe Mode**.
+2.  Turn off **Restricted Mode**.
 3.  Click **Browse** and search for `Dynamic Lock`.
 4.  Click **Install** and then **Enable**.
 
