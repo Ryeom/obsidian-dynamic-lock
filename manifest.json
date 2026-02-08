@@ -1,11 +1,11 @@
 {
-	"id": "obsidian-dynamic-lock",
+	"id": "dynamic-lock",
 	"name": "Dynamic Lock",
 	"version": "1.3.3",
 	"minAppVersion": "0.15.0",
-	"description": "Dynamically switch between Reading and Editing modes based on file properties or global lock settings.",
+	"description": "Dynamically switch between Reading and Editing modes based on file properties, folders, or time.",
 	"author": "Ryeom",
-	"authorUrl": "https://github.com/Ryeom/obsidian-dynamic-lock",
+	"authorUrl": "https://github.com/Ryeom",
 	"fundingUrl": "https://github.com/sponsors/Ryeom",
 	"isDesktopOnly": false
 }
