@@ -5,7 +5,7 @@
 > **Dynamically secure your workflow.**
 > Automatically switch between **Reading** and **Editing** modes based on file properties, folders, or time.
 
-![Version](https://img.shields.io/badge/version-1.3.3-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-1.3.4-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 Move seamlessly between **writing** and **referencing**. Protect your finished notes from accidental edits while keeping your active drafts ready to write.
 

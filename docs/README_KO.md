@@ -3,7 +3,7 @@
 > **워크플로우를 동적으로 보호하세요.**
 > 파일 속성, 폴더, 시간 기반으로 **읽기 모드**와 **편집 모드**를 자동으로 변경해요.
 
-![Version](https://img.shields.io/badge/version-1.3.3-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-1.3.4-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 **편집하기**와 **읽기** 사이를 자연스럽게 이동하세요. 완성된 노트는 실수로 수정되지 않도록 보호하고, 작성 중인 초안은 바로 편집할 수 있게 해드려요.
 
