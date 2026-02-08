@@ -15,6 +15,7 @@ export class ViewController {
 	private saveSettings: () => Promise<void>;
 	private statusBarItem: HTMLElement;
 	private lastFilePerLeaf = new WeakMap<WorkspaceLeaf, TFile>();
+	private pendingModeEnforcement = false;
 
 	constructor(deps: ViewControllerDeps) {
 		this.app = deps.app;
@@ -33,6 +34,11 @@ export class ViewController {
 
 		if (requiredMode) {
 			await this.setFileViewMode(requiredMode);
+			// Allow handleViewUpdate to enforce mode briefly after file-open
+			this.pendingModeEnforcement = true;
+			setTimeout(() => {
+				this.pendingModeEnforcement = false;
+			}, 500);
 		} else {
 			const lastFile = this.lastFilePerLeaf.get(leaf);
 			const isNavigation = lastFile?.path !== file.path;
@@ -125,13 +131,19 @@ export class ViewController {
 		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!file || !view) return;
 
-		const settings = this.getSettings();
-		const requiredMode = getRequiredViewMode(this.app, file, settings);
+		// Only enforce mode during the brief window after file-open
+		// This prevents Obsidian's initialization from overriding our mode
+		// but allows manual mode changes afterward
+		if (this.pendingModeEnforcement) {
+			const settings = this.getSettings();
+			const requiredMode = getRequiredViewMode(this.app, file, settings);
 
-		if (requiredMode && view.getMode() !== requiredMode) {
-			void this.setFileViewMode(requiredMode);
-		} else {
-			this.updateTabLockIcon(view, view.getMode() === 'preview');
+			if (requiredMode && view.getMode() !== requiredMode) {
+				void this.setFileViewMode(requiredMode);
+				return;
+			}
 		}
+
+		this.updateTabLockIcon(view, view.getMode() === 'preview');
 	}
 }
