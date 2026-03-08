@@ -10,6 +10,8 @@ export interface ViewControllerDeps {
 }
 
 export class ViewController {
+	private static readonly MODE_ENFORCEMENT_WINDOW_MS = 500;
+
 	private app: App;
 	private getSettings: () => DynamicLockSettings;
 	private saveSettings: () => Promise<void>;
@@ -38,7 +40,7 @@ export class ViewController {
 			this.pendingModeEnforcement = true;
 			setTimeout(() => {
 				this.pendingModeEnforcement = false;
-			}, 500);
+			}, ViewController.MODE_ENFORCEMENT_WINDOW_MS);
 		} else {
 			const lastFile = this.lastFilePerLeaf.get(leaf);
 			const isNavigation = lastFile?.path !== file.path;
