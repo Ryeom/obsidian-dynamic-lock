@@ -45,8 +45,7 @@ export function getRequiredViewMode(
 
 	// 4. Time-based Lock
 	if (settings.timeLockEnabled) {
-		// @ts-ignore - stat exists but not in type definition
-		const stat = file.stat;
+		const stat = (file as unknown as { stat: { ctime: number; mtime: number } }).stat;
 		if (stat) {
 			const now = Date.now();
 			const targetTime = settings.timeLockMetric === 'mtime' ? stat.mtime : stat.ctime;

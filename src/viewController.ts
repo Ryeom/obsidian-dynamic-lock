@@ -69,8 +69,7 @@ export class ViewController {
 
 	updateTabLockIcon(view: MarkdownView, locked: boolean): void {
 		const leaf = view.leaf;
-		// @ts-ignore - tabHeaderEl exists but not in type definition
-		const tabHeader = leaf.tabHeaderEl as HTMLElement;
+		const tabHeader = (leaf as unknown as { tabHeaderEl: HTMLElement }).tabHeaderEl;
 
 		if (tabHeader) {
 			if (locked) {
