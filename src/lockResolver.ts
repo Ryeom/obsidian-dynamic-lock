@@ -18,13 +18,21 @@ export function getRequiredViewMode(
 	const { globalMode, rules, folderRules } = settings;
 
 	// 1. Force Reading (Strong Lock)
-	if (globalMode === 'force-reading') return 'preview';
+	if (globalMode === 'force-reading') {
+		console.debug('[DynamicLock] Rule matched: Global force-reading');
+		return 'preview';
+	}
 
 	// 2. Frontmatter Rules
 	const cache = app.metadataCache.getFileCache(file);
 	if (cache?.frontmatter) {
 		for (const rule of rules) {
 			if (String(cache.frontmatter[rule.attribute]) === rule.value) {
+				console.debug('[DynamicLock] Rule matched: Frontmatter', {
+					file: file.path,
+					rule: `${rule.attribute}=${rule.value}`,
+					mode: rule.mode
+				});
 				return rule.mode;
 			}
 		}
@@ -39,7 +47,13 @@ export function getRequiredViewMode(
 
 		if (matchingRules.length > 0) {
 			matchingRules.sort((a, b) => b.path.length - a.path.length);
-			return matchingRules[0]!.mode;
+			const matched = matchingRules[0]!;
+			console.debug('[DynamicLock] Rule matched: Folder (longest prefix)', {
+				file: file.path,
+				folderRule: matched.path,
+				mode: matched.mode
+			});
+			return matched.mode;
 		}
 	}
 
@@ -52,14 +66,26 @@ export function getRequiredViewMode(
 			const ageDays = (now - targetTime) / (1000 * 60 * 60 * 24);
 
 			if (ageDays > settings.timeLockDays) {
+				console.debug('[DynamicLock] Rule matched: Time-based lock', {
+					file: file.path,
+					ageDays: Math.floor(ageDays),
+					threshold: settings.timeLockDays,
+					metric: settings.timeLockMetric
+				});
 				return 'preview';
 			}
 		}
 	}
 
 	// 5. Force Editing
-	if (globalMode === 'force-editing') return 'source';
+	if (globalMode === 'force-editing') {
+		console.debug('[DynamicLock] Rule matched: Global force-editing');
+		return 'source';
+	}
 
 	// 6. No match
+	console.debug('[DynamicLock] No rule matched, returning null', {
+		file: file.path
+	});
 	return null;
 }

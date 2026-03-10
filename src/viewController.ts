@@ -35,6 +35,11 @@ export class ViewController {
 		const requiredMode = getRequiredViewMode(this.app, file, settings);
 
 		if (requiredMode) {
+			console.debug('[DynamicLock] Enforcing mode from rule:', {
+				file: file.path,
+				requiredMode,
+				globalMode: settings.globalMode
+			});
 			await this.setFileViewMode(requiredMode);
 			// Allow handleViewUpdate to enforce mode briefly after file-open
 			this.pendingModeEnforcement = true;
@@ -46,6 +51,10 @@ export class ViewController {
 			const isNavigation = lastFile?.path !== file.path;
 
 			if (isNavigation && settings.defaultMode !== 'keep') {
+				console.debug('[DynamicLock] Applying default mode:', {
+					file: file.path,
+					defaultMode: settings.defaultMode
+				});
 				await this.setFileViewMode(settings.defaultMode);
 			} else {
 				this.updateTabLockIcon(view, view.getMode() === 'preview');
@@ -82,8 +91,15 @@ export class ViewController {
 
 	async setGlobalMode(mode: DynamicLockSettings['globalMode']): Promise<void> {
 		const settings = this.getSettings();
+		const previousMode = settings.globalMode;
 		settings.globalMode = mode;
 		await this.saveSettings();
+
+		console.debug('[DynamicLock] Global mode changed:', {
+			from: previousMode,
+			to: mode
+		});
+
 		new Notice(`Dynamic Lock: Switched to ${mode}`);
 
 		const file = this.app.workspace.getActiveFile();
