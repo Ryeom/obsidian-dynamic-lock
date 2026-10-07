@@ -22,6 +22,14 @@ export default tseslint.config(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		...tseslint.configs.disableTypeChecked,
+		files: ["tests/**/*.mjs"],
+		languageOptions: {
+			parserOptions: { projectService: false },
+			globals: globals.node,
+		},
+	},
 	globalIgnores([
 		"node_modules",
 		"dist",

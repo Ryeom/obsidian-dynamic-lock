@@ -14,7 +14,7 @@ Move seamlessly between **writing** and **referencing**. Protect your finished n
 ## Features
 
 - **Smart Lock Logic**:
-    - **Strong Lock (Reading)**: Permanently locks files for review or presentation.
+    - **Strong Lock (Reading)**: Keeps all open Markdown notes in Reading mode for review or presentation.
     - **Safe Edit (Editing)**: Allows editing but respects explicit locks on archived files.
 - **Folder Rules**: Automatically lock files in specific folders (e.g., `Archives/`, `References/`). Supports Longest Prefix Match.
 - **Frontmatter Rules**: Lock individual files using metadata (e.g., `status: done`, `type: archive`).
@@ -37,10 +37,12 @@ Dynamic Lock determines the view mode based on a **Priority System**:
 5.  **Global Force Editing**: Forces Editing mode.
 6.  **Auto Mode**:
     - **Strict Rules**: Locks files matching the rules above.
-    - **Free Navigation**: New files default to **Editing Mode** unless locked.
-    - **Tab Persistence**: Switching tabs preserves your manual mode (Reading/Editing) for open files.
+    - **Free Navigation**: Newly opened files use **Default mode** when no rule matches (initially **Keep current**).
+    - **Tab Persistence**: Switching tabs preserves your manual mode (Reading/Editing) for files without a matching rule.
 
 ---
+
+Rules are reapplied to open notes when properties, settings, or folder paths change, and when the plugin starts. Matching rules remain enforced when switching view modes. When a rule stops matching, the configured **Default mode** applies; **Keep current** leaves the view as it is.
 
 ## Usage
 

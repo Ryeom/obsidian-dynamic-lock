@@ -24,7 +24,7 @@ export default class DynamicLockPlugin extends Plugin {
 
 		this.viewController.updateStatusBar();
 
-		this.statusBarItem.onClickEvent(async () => {
+		this.registerDomEvent(this.statusBarItem, 'click', async () => {
 			const modes: Array<DynamicLockSettings['globalMode']> = ['auto', 'force-reading', 'force-editing'];
 			const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
 			const nextIndex = (currentIndex + 1) % modes.length;
@@ -33,6 +33,7 @@ export default class DynamicLockPlugin extends Plugin {
 
 		this.registerCommands();
 		this.registerEvents();
+		this.app.workspace.onLayoutReady(() => this.viewController.refreshInBackground());
 	}
 
 	private registerCommands() {
@@ -67,24 +68,25 @@ export default class DynamicLockPlugin extends Plugin {
 	}
 
 	private registerEvents() {
-		this.registerEvent(this.app.workspace.on('file-open', async (file) => {
-			if (!file) return;
-			await this.viewController.processFileMode(file);
+		this.registerEvent(this.app.workspace.on('file-open', () => {
+			this.viewController.refreshInBackground();
 		}));
-
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
-			this.viewController.handleViewUpdate();
+			this.viewController.refreshInBackground();
 		}));
-
 		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
-			this.viewController.handleViewUpdate();
+			this.viewController.refreshInBackground();
+		}));
+		this.registerEvent(this.app.metadataCache.on('changed', file => {
+			this.viewController.refreshInBackground(file);
+		}));
+		this.registerEvent(this.app.vault.on('rename', () => {
+			this.viewController.refreshInBackground();
 		}));
 	}
 
 	onunload() {
-		if (this.statusBarItem) {
-			this.statusBarItem.remove();
-		}
+		this.viewController?.dispose();
 	}
 
 	async loadSettings() {
@@ -94,5 +96,6 @@ export default class DynamicLockPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 		this.viewController?.updateStatusBar();
+		await this.viewController?.refreshViews(undefined, true);
 	}
 }

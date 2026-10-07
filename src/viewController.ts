@@ -1,4 +1,4 @@
-import { App, MarkdownView, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
+import { App, MarkdownView, Notice, setIcon, TFile } from 'obsidian';
 import { DynamicLockSettings, ViewMode } from './types';
 import { getRequiredViewMode } from './lockResolver';
 
@@ -10,14 +10,18 @@ export interface ViewControllerDeps {
 }
 
 export class ViewController {
-	private static readonly MODE_ENFORCEMENT_WINDOW_MS = 500;
-
 	private app: App;
 	private getSettings: () => DynamicLockSettings;
 	private saveSettings: () => Promise<void>;
 	private statusBarItem: HTMLElement;
-	private lastFilePerLeaf = new WeakMap<WorkspaceLeaf, TFile>();
-	private pendingModeEnforcement = false;
+	private lastPathPerView = new WeakMap<MarkdownView, string>();
+	private lastRequiredMode = new WeakMap<MarkdownView, ViewMode | null>();
+	private updates = new Map<MarkdownView, {
+		requested: boolean;
+		applyDefault: boolean;
+		promise: Promise<void>;
+	}>();
+	private disposed = false;
 
 	constructor(deps: ViewControllerDeps) {
 		this.app = deps.app;
@@ -26,54 +30,75 @@ export class ViewController {
 		this.statusBarItem = deps.statusBarItem;
 	}
 
-	async processFileMode(file: TFile): Promise<void> {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!view) return;
-
-		const leaf = view.leaf;
-		const settings = this.getSettings();
-		const requiredMode = getRequiredViewMode(this.app, file, settings);
-
-		if (requiredMode) {
-			console.debug('[DynamicLock] Enforcing mode from rule:', {
-				file: file.path,
-				requiredMode,
-				globalMode: settings.globalMode
-			});
-			await this.setFileViewMode(requiredMode);
-			// Allow handleViewUpdate to enforce mode briefly after file-open
-			this.pendingModeEnforcement = true;
-			setTimeout(() => {
-				this.pendingModeEnforcement = false;
-			}, ViewController.MODE_ENFORCEMENT_WINDOW_MS);
-		} else {
-			const lastFile = this.lastFilePerLeaf.get(leaf);
-			const isNavigation = lastFile?.path !== file.path;
-
-			if (isNavigation && settings.defaultMode !== 'keep') {
-				console.debug('[DynamicLock] Applying default mode:', {
-					file: file.path,
-					defaultMode: settings.defaultMode
-				});
-				await this.setFileViewMode(settings.defaultMode);
-			} else {
-				this.updateTabLockIcon(view, view.getMode() === 'preview');
-			}
-		}
-
-		this.lastFilePerLeaf.set(leaf, file);
+	async refreshViews(file?: TFile, applyDefault = false): Promise<void> {
+		if (this.disposed) return;
+		const updates = this.app.workspace.getLeavesOfType('markdown')
+			.map(leaf => leaf.view)
+			.filter((view): view is MarkdownView => view instanceof MarkdownView)
+			.filter(view => view.file && (!file || view.file.path === file.path))
+			.map(view => this.queueUpdate(view, applyDefault));
+		await Promise.all(updates);
 	}
 
-	async setFileViewMode(mode: ViewMode): Promise<void> {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!view) return;
-
-		const state = view.getState();
-		if (state.mode !== mode) {
-			await view.setState({ ...state, mode }, { history: false });
+	private queueUpdate(view: MarkdownView, applyDefault: boolean): Promise<void> {
+		const pending = this.updates.get(view);
+		if (pending) {
+			pending.requested = true;
+			pending.applyDefault ||= applyDefault;
+			return pending.promise;
 		}
 
-		this.updateTabLockIcon(view, mode === 'preview');
+		// Mode changes can emit more layout events; coalesce them per view.
+		const update = { requested: true, applyDefault, promise: Promise.resolve() };
+		this.updates.set(view, update);
+		update.promise = Promise.resolve().then(async () => {
+			try {
+				while (update.requested && !this.disposed) {
+					const resetDefault = update.applyDefault;
+					update.requested = false;
+					update.applyDefault = false;
+					await this.processView(view, resetDefault);
+				}
+			} finally {
+				this.updates.delete(view);
+			}
+		}).catch((error: unknown) => {
+			console.error('[DynamicLock] Failed to update view mode', error);
+		});
+		return update.promise;
+	}
+
+	private async processView(view: MarkdownView, applyDefault: boolean): Promise<void> {
+		const file = view.file;
+		if (!file) return;
+		const settings = this.getSettings();
+		const requiredMode = getRequiredViewMode(this.app, file, settings);
+		const isNavigation = this.lastPathPerView.get(view) !== file.path;
+		const ruleReleased = this.lastRequiredMode.get(view) != null && requiredMode === null;
+		this.lastPathPerView.set(view, file.path);
+		this.lastRequiredMode.set(view, requiredMode);
+
+		const mode = requiredMode ?? ((isNavigation || applyDefault || ruleReleased) && settings.defaultMode !== 'keep'
+			? settings.defaultMode : null);
+		if (mode && view.getMode() !== mode) {
+			await view.setState({ ...view.getState(), mode }, { history: false });
+		}
+		if (!this.disposed && view.file === file) {
+			this.updateTabLockIcon(view, view.getMode() === 'preview');
+		}
+	}
+
+	refreshInBackground(file?: TFile): void {
+		void this.refreshViews(file);
+	}
+
+	dispose(): void {
+		this.disposed = true;
+		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+			if (leaf.view instanceof MarkdownView) {
+				this.updateTabLockIcon(leaf.view, false);
+			}
+		}
 	}
 
 	updateTabLockIcon(view: MarkdownView, locked: boolean): void {
@@ -101,11 +126,6 @@ export class ViewController {
 		});
 
 		new Notice(`Dynamic Lock: Switched to ${mode}`);
-
-		const file = this.app.workspace.getActiveFile();
-		if (file) {
-			this.app.workspace.trigger('file-open', file);
-		}
 	}
 
 	updateStatusBar(): void {
@@ -141,26 +161,5 @@ export class ViewController {
 
 		const textSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-segment' });
 		textSpan.setText(text);
-	}
-
-	handleViewUpdate(): void {
-		const file = this.app.workspace.getActiveFile();
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!file || !view) return;
-
-		// Only enforce mode during the brief window after file-open
-		// This prevents Obsidian's initialization from overriding our mode
-		// but allows manual mode changes afterward
-		if (this.pendingModeEnforcement) {
-			const settings = this.getSettings();
-			const requiredMode = getRequiredViewMode(this.app, file, settings);
-
-			if (requiredMode && view.getMode() !== requiredMode) {
-				void this.setFileViewMode(requiredMode);
-				return;
-			}
-		}
-
-		this.updateTabLockIcon(view, view.getMode() === 'preview');
 	}
 }
