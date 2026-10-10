@@ -20,10 +20,10 @@ class Events {
 function element() {
   const classes = new Set();
   return {
-    classes, children: [], text: '',
+    classes, children: [], text: '', scrollTop: 0,
     addClass: name => classes.add(name),
     removeClass: (...names) => names.forEach(name => classes.delete(name)),
-    empty() { this.children = []; },
+    empty() { this.children = []; this.scrollTop = 0; },
     createSpan() { const child = element(); this.children.push(child); return child; },
     setText(text) { this.text = text; }, setCssProps() {},
   };
@@ -50,7 +50,7 @@ class MarkdownView {
 class Plugin {
   commands = [];
   events = [];
-  addSettingTab() {}
+  addSettingTab(tab) { this.settingTab = tab; }
   addStatusBarItem() { return element(); }
   addCommand(command) { this.commands.push(command); }
   registerDomEvent() {}
@@ -58,6 +58,32 @@ class Plugin {
   async loadData() { return this.saved; }
   async saveData(data) { this.saved = structuredClone(data); }
 }
+class Setting {
+  constructor(container) { container.children.push(this); this.controls = []; this.controlEl = element(); }
+  setName(name) { this.name = name; return this; }
+  setDesc(desc) { this.desc = desc; return this; }
+  setHeading() { return this; }
+  setClass() { return this; }
+  then(callback) { callback(this); return this; }
+  addControl(type, callback) {
+    const control = {
+      type, inputEl: {},
+      setValue(value) { this.value = value; return this; },
+      setPlaceholder() { return this; }, addOption() { return this; },
+      setButtonText() { return this; }, setCta() { return this; },
+      setIcon() { return this; }, setTooltip() { return this; },
+      onClick(callback) { this.click = callback; return this; },
+      onChange(callback) { this.change = callback; return this; },
+    };
+    this.controls.push(control); callback(control); return this;
+  }
+  addText(cb) { return this.addControl('text', cb); }
+  addDropdown(cb) { return this.addControl('dropdown', cb); }
+  addToggle(cb) { return this.addControl('toggle', cb); }
+  addButton(cb) { return this.addControl('button', cb); }
+  addExtraButton(cb) { return this.addControl('extra', cb); }
+}
+
 const { outputFiles } = await build({
   entryPoints: ['src/main.ts'], bundle: true, write: false, platform: 'node',
   format: 'cjs', external: ['obsidian'],
@@ -69,7 +95,8 @@ const context = {
   require: () => ({
     Plugin, MarkdownView, Notice: class { constructor(message) { notices.push(message); } }, setIcon() {},
     getLanguage: () => appLanguage,
-    PluginSettingTab: class {}, AbstractInputSuggest: class {}, TFolder: class {},
+    PluginSettingTab: class { constructor() { this.containerEl = element(); } },
+    Setting, AbstractInputSuggest: class {}, TFolder: class {},
   }),
 };
 vm.runInNewContext(outputFiles[0].text, context);
@@ -277,3 +304,141 @@ test('global editing also allows manually switching to reading', async () => {
   await setImmediate();
   assert.equal(views[0].mode, 'preview');
 });
+
+for (const kind of ['property', 'folder']) {
+  test(`${kind} keep-reading restores both panes, stops when disabled, and does not loop`, async () => {
+    const { plugin, views, workspace, caches } = await fixture();
+    const rule = kind === 'property'
+      ? { attribute: 'status', value: 'done', mode: 'preview', keepReading: true }
+      : { path: 'Archive', mode: 'preview', keepReading: true };
+    if (kind === 'property') {
+      plugin.settings.rules = [rule];
+      for (const view of views) caches.set(view.file.path, { frontmatter: { status: 'done' } });
+    } else {
+      plugin.settings.folderRules = [rule];
+      for (const view of views) view.file.path = `Archive/${view.file.path}`;
+    }
+    await plugin.saveSettings();
+    await Promise.all(views.map(view => view.setState({ mode: 'source' })));
+    await setImmediate();
+    assert.deepEqual(views.map(view => view.mode), ['preview', 'preview']);
+    const writes = views.map(view => view.writes);
+    workspace.trigger('layout-change');
+    await setImmediate();
+    assert.deepEqual(views.map(view => view.writes), writes);
+    assert.equal(plugin.saved[kind === 'property' ? 'rules' : 'folderRules'][0].keepReading, true);
+    rule.keepReading = false;
+    await plugin.saveSettings();
+    await views[0].setState({ mode: 'source' });
+    await setImmediate();
+    assert.equal(views[0].mode, 'source');
+  });
+}
+
+test('property and more specific folder exceptions outrank a maintained parent folder', async () => {
+  const { plugin, views, caches } = await fixture({ folderRules: [
+    { path: 'Archive', mode: 'preview', keepReading: true },
+    { path: 'Archive/Drafts', mode: 'preview' },
+  ], rules: [{ attribute: 'status', value: 'draft', mode: 'source' }] });
+  views[0].file.path = 'Archive/Drafts/one.md';
+  views[1].file.path = 'Archive/two.md';
+  caches.set(views[1].file.path, { frontmatter: { status: 'draft' } });
+  await plugin.saveSettings();
+  assert.deepEqual(views.map(view => view.mode), ['preview', 'source']);
+  await views[0].setState({ mode: 'source' });
+  await views[1].setState({ mode: 'preview' });
+  await setImmediate();
+  assert.deepEqual(views.map(view => view.mode), ['source', 'preview']);
+});
+
+test('first property rule wins even when a later match enables keep-reading', async () => {
+  const { plugin, views, caches } = await fixture({ rules: [
+    { attribute: 'status', value: 'done', mode: 'preview' },
+    { attribute: 'status', value: 'done', mode: 'preview', keepReading: true },
+  ] });
+  caches.set('one.md', { frontmatter: { status: 'done' } });
+  await plugin.saveSettings();
+  await views[0].setState({ mode: 'source' });
+  await setImmediate();
+  assert.equal(views[0].mode, 'source');
+});
+
+test('new hard property match overrides an earlier manual choice and removal releases it', async () => {
+  const { views, caches, metadataCache } = await fixture({ defaultMode: 'source', rules: [
+    { attribute: 'status', value: 'done', mode: 'preview', keepReading: true },
+  ] });
+  await views[0].setState({ mode: 'preview' });
+  await setImmediate();
+  await views[0].setState({ mode: 'source' });
+  await setImmediate();
+  caches.set('one.md', { frontmatter: { status: 'done' } });
+  metadataCache.trigger('changed', views[0].file);
+  await setImmediate();
+  assert.equal(views[0].mode, 'preview');
+  caches.delete('one.md');
+  metadataCache.trigger('changed', views[0].file);
+  await setImmediate();
+  assert.equal(views[0].mode, 'source');
+});
+
+test('editing rules ignore stale keep-reading flags; global reading keeps its existing priority', async () => {
+  const { plugin, views, caches } = await fixture({ rules: [
+    { attribute: 'status', value: 'done', mode: 'source', keepReading: true },
+  ] });
+  caches.set('one.md', { frontmatter: { status: 'done' } });
+  await plugin.saveSettings();
+  await views[0].setState({ mode: 'preview' });
+  await setImmediate();
+  assert.equal(views[0].mode, 'preview');
+  plugin.settings.rules[0].mode = 'preview';
+  await command(plugin, 'set-global-mode-reading');
+  await views[0].setState({ mode: 'source' });
+  await setImmediate();
+  assert.equal(views[0].mode, 'source');
+  await command(plugin, 'set-global-mode-editing');
+  await views[0].setState({ mode: 'source' });
+  await setImmediate();
+  assert.equal(views[0].mode, 'preview');
+});
+
+test('unload also stops maintained reading rules', async () => {
+  const { plugin, views, caches } = await fixture({ rules: [
+    { attribute: 'status', value: 'done', mode: 'preview', keepReading: true },
+  ] });
+  caches.set('one.md', { frontmatter: { status: 'done' } });
+  await plugin.saveSettings();
+  const change = views[0].setState({ mode: 'source' });
+  plugin.onunload();
+  await change;
+  await setImmediate();
+  assert.equal(views[0].mode, 'source');
+});
+
+for (const kind of ['rules', 'folderRules']) {
+  test(`${kind} settings show the toggle only for reading and save mode changes`, async () => {
+    const rule = kind === 'rules'
+      ? { attribute: 'status', value: 'done', mode: 'preview' }
+      : { path: 'Archive', mode: 'preview' };
+    const { plugin } = await fixture({ [kind]: [rule] });
+    const tab = plugin.settingTab;
+    tab.display();
+    const ruleRow = () => tab.containerEl.children.find(row => row.controls.some(control => control.type === 'extra'));
+    const toggles = () => ruleRow().controls.filter(control => control.type === 'toggle');
+    assert.equal(toggles().length, 1);
+    assert.equal(toggles()[0].value, false);
+    await toggles()[0].change(true);
+    assert.equal(plugin.saved[kind][0].keepReading, true);
+    const modeDropdown = () => tab.containerEl.children
+      .find(row => row.controls.some(control => control.type === 'extra'))
+      .controls.find(control => control.type === 'dropdown');
+    tab.containerEl.scrollTop = 480;
+    await modeDropdown().change('source');
+    assert.equal(tab.containerEl.scrollTop, 480);
+    assert.equal(toggles().length, 0);
+    assert.equal(plugin.saved[kind][0].keepReading, false);
+    await modeDropdown().change('preview');
+    assert.equal(tab.containerEl.scrollTop, 480);
+    assert.equal(toggles().length, 1);
+    assert.equal(toggles()[0].value, false);
+  });
+}

@@ -1,6 +1,6 @@
 import { App, MarkdownView, Notice, setIcon, TFile } from 'obsidian';
 import { DynamicLockSettings, ViewMode } from './types';
-import { getRequiredViewMode } from './lockResolver';
+import { resolveViewRule } from './lockResolver';
 import { createTranslator } from './i18n';
 
 export interface ViewControllerDeps {
@@ -75,10 +75,12 @@ export class ViewController {
 		const file = view.file;
 		if (!file) return;
 		const settings = this.getSettings();
-		const requiredMode = getRequiredViewMode(this.app, file, settings);
+		const rule = resolveViewRule(this.app, file, settings);
+		const requiredMode = rule?.mode ?? null;
+		const keepReading = rule?.keepReading === true;
 		const isNavigation = this.lastPathPerView.get(view) !== file.path;
 		const ruleChanged = this.lastRequiredMode.get(view) !== requiredMode;
-		if (isNavigation || applyDefault) {
+		if (isNavigation || applyDefault || keepReading) {
 			this.manualModeViews.delete(view);
 		} else if (this.lastModePerView.has(view) && this.lastModePerView.get(view) !== view.getMode()) {
 			this.manualModeViews.add(view);
@@ -86,7 +88,7 @@ export class ViewController {
 		this.lastPathPerView.set(view, file.path);
 		this.lastRequiredMode.set(view, requiredMode);
 
-		const shouldApply = isNavigation || applyDefault || (ruleChanged && !this.manualModeViews.has(view));
+		const shouldApply = keepReading || isNavigation || applyDefault || (ruleChanged && !this.manualModeViews.has(view));
 		const mode = shouldApply ? requiredMode ?? (settings.defaultMode !== 'keep' ? settings.defaultMode : null) : null;
 		if (mode && view.getMode() !== mode) {
 			await view.setState({ ...view.getState(), mode }, { history: false });

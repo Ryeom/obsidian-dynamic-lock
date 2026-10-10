@@ -10,17 +10,17 @@ import { DynamicLockSettings, ViewMode } from './types';
  * 5. Global Force Editing
  * 6. No match → returns null
  */
-export function getRequiredViewMode(
+export function resolveViewRule(
 	app: App,
 	file: TFile,
 	settings: DynamicLockSettings
-): ViewMode | null {
+): { mode: ViewMode; keepReading: boolean } | null {
 	const { globalMode, rules, folderRules } = settings;
 
-	// 1. Force Reading (Strong Lock)
+	// 1. Global Reading (initial mode only)
 	if (globalMode === 'force-reading') {
 		console.debug('[DynamicLock] Rule matched: Global force-reading');
-		return 'preview';
+		return { mode: 'preview', keepReading: false };
 	}
 
 	// 2. Frontmatter Rules
@@ -33,7 +33,7 @@ export function getRequiredViewMode(
 					rule: `${rule.attribute}=${rule.value}`,
 					mode: rule.mode
 				});
-				return rule.mode;
+				return { mode: rule.mode, keepReading: rule.mode === 'preview' && rule.keepReading === true };
 			}
 		}
 	}
@@ -53,7 +53,7 @@ export function getRequiredViewMode(
 				folderRule: matched.path,
 				mode: matched.mode
 			});
-			return matched.mode;
+			return { mode: matched.mode, keepReading: matched.mode === 'preview' && matched.keepReading === true };
 		}
 	}
 
@@ -72,7 +72,7 @@ export function getRequiredViewMode(
 					threshold: settings.timeLockDays,
 					metric: settings.timeLockMetric
 				});
-				return 'preview';
+				return { mode: 'preview', keepReading: false };
 			}
 		}
 	}
@@ -80,7 +80,7 @@ export function getRequiredViewMode(
 	// 5. Force Editing
 	if (globalMode === 'force-editing') {
 		console.debug('[DynamicLock] Rule matched: Global force-editing');
-		return 'source';
+		return { mode: 'source', keepReading: false };
 	}
 
 	// 6. No match

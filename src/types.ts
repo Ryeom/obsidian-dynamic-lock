@@ -4,11 +4,13 @@ export interface Rule {
 	attribute: string;
 	value: string;
 	mode: ViewMode;
+	keepReading?: boolean;
 }
 
 export interface FolderRule {
 	path: string;
 	mode: ViewMode;
+	keepReading?: boolean;
 }
 
 export interface DynamicLockSettings {

@@ -34,3 +34,37 @@
 .dynamic-lock-status-icon {
     margin-right: 4px;
 }
+
+.dynamic-lock-keep-reading-label {
+    white-space: nowrap;
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+.dynamic-lock-rule .setting-item-info {
+    display: none;
+}
+
+.dynamic-lock-rule .setting-item-control {
+    flex: 1;
+    min-width: 0;
+    gap: 8px;
+}
+
+.dynamic-lock-rule .setting-item-control > input[type="text"] {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+}
+
+.dynamic-lock-rule .setting-item-control > :not(input[type="text"]) {
+    flex-shrink: 0;
+}
+
+.dynamic-lock-rule-heading .setting-item-info {
+    min-width: 0;
+}
+
+.dynamic-lock-rule-heading .setting-item-control {
+    margin-left: 20px;
+}

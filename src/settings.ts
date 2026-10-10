@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, ButtonComponent, AbstractInputSuggest, TFolder } from "obsidian";
 import DynamicLockPlugin from "./main";
-import { ViewMode } from "./types";
+import { ViewMode, Rule, FolderRule } from "./types";
 import { createTranslator } from "./i18n";
 
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
@@ -46,6 +46,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
+		const scrollTop = containerEl.scrollTop;
 		const t = createTranslator();
 
 		containerEl.empty();
@@ -109,9 +110,8 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(t('frontmatter.heading'))
 			.setDesc(t('frontmatter.description'))
-			.setHeading();
-
-		new Setting(containerEl)
+			.setHeading()
+			.setClass('dynamic-lock-rule-heading')
 			.addButton((btn: ButtonComponent) => {
 				btn
 					.setButtonText(t('frontmatter.add'))
@@ -129,6 +129,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 		this.plugin.settings.rules.forEach((rule, index) => {
 			new Setting(containerEl)
+				.setClass('dynamic-lock-rule')
 				.addText(text => text
 					.setPlaceholder(t('frontmatter.attributePlaceholder'))
 					.setValue(rule.attribute)
@@ -149,8 +150,11 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					.setValue(rule.mode)
 					.onChange(async (value) => {
 						rule.mode = value as ViewMode;
+						if (rule.mode !== 'preview') rule.keepReading = false;
 						await this.plugin.saveSettings();
+						this.display();
 					}))
+				.then(setting => this.addKeepReadingToggle(setting, rule))
 				.addExtraButton(cb => cb
 					.setIcon("cross")
 					.setTooltip(t('rule.delete'))
@@ -164,9 +168,8 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(t('folder.heading'))
 			.setDesc(t('folder.description'))
-			.setHeading();
-
-		new Setting(containerEl)
+			.setHeading()
+			.setClass('dynamic-lock-rule-heading')
 			.addButton((btn: ButtonComponent) => {
 				btn
 					.setButtonText(t('folder.add'))
@@ -183,6 +186,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 		this.plugin.settings.folderRules.forEach((rule, index) => {
 			new Setting(containerEl)
+				.setClass('dynamic-lock-rule')
 				.addText(text => {
 					text
 						.setPlaceholder(t('folder.pathPlaceholder'))
@@ -199,8 +203,11 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					.setValue(rule.mode)
 					.onChange(async (value) => {
 						rule.mode = value as ViewMode;
+						if (rule.mode !== 'preview') rule.keepReading = false;
 						await this.plugin.saveSettings();
+						this.display();
 					}))
+				.then(setting => this.addKeepReadingToggle(setting, rule))
 				.addExtraButton(cb => cb
 					.setIcon("cross")
 					.setTooltip(t('rule.delete'))
@@ -210,5 +217,21 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 						this.display();
 					}));
 		});
+		containerEl.scrollTop = scrollTop;
 	}
+
+	private addKeepReadingToggle(setting: Setting, rule: Rule | FolderRule): void {
+		if (rule.mode !== 'preview') return;
+		const t = createTranslator();
+		setting.controlEl.createSpan({ text: t('rule.keepReading.label'), cls: 'dynamic-lock-keep-reading-label' });
+		setting
+			.addToggle(toggle => toggle
+				.setTooltip(`${t('rule.keepReading.name')}: ${t('rule.keepReading.description')}`, { delay: 100 })
+				.setValue(rule.keepReading === true)
+				.onChange(async value => {
+					rule.keepReading = value;
+					await this.plugin.saveSettings();
+				}));
+	}
+
 }

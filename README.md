@@ -2,7 +2,7 @@
 
 [한국어](docs/README_KO.md)
 
-Open Markdown notes in Reading or Editing mode based on their properties, folder, or age. **Once a note is open, switch modes freely.**
+Open Markdown notes in Reading or Editing mode based on their properties, folder, or age. **Switch modes freely, or keep selected notes in Reading mode.**
 
 Keep reference notes ready to read and working drafts ready to edit, without switching modes every time you open them.
 
@@ -12,7 +12,7 @@ Keep reference notes ready to read and working drafts ready to edit, without swi
 - Open finished notes with `status: done` in Reading mode.
 - Open journal entries older than 30 days in Reading mode, based on their creation date.
 
-You can switch any of these notes to Editing when you need to make a change. Dynamic Lock controls the view mode; it does not prevent editing or make files read-only.
+By default, you can switch any of these notes to Editing when you need to make a change. Enable **Keep Reading mode** on a Reading property or folder rule to switch back to Reading whenever Editing is selected. This controls the Obsidian view; it does not make files read-only or block external tools from updating them.
 
 ## Quick start
 
@@ -44,9 +44,15 @@ When several rules apply, the first match in this order decides the mode:
 5. Global **Editing** mode → Editing.
 6. **Default mode** → Keep current, Reading, or Editing.
 
+### Keep selected notes in Reading mode
+
+Reading property and folder rules have a **Keep Reading mode** toggle, off by default for both existing and new rules. Only the winning rule above controls whether Reading is maintained; a more specific folder or a property rule can provide an exception. Global **Locked** mode takes priority and retains its existing behavior of allowing manual switching.
+
+Turn the toggle off to edit normally. Choosing Editing for the rule hides the toggle and clears it. Age rules and the default mode do not enforce Reading.
+
 ### What happens after opening a note?
 
-Your manual Reading/Editing choice is preserved when switching tabs or updating note properties. If you haven't switched modes manually, a change to the matching rule can update the view mode.
+Unless the winning rule has **Keep Reading mode** enabled, your manual Reading/Editing choice is preserved when switching tabs or updating note properties. If you haven't switched modes manually, a change to the matching rule can update the view mode.
 
 Opening another file in the tab, reopening a note, or reloading the plugin applies the configured modes again. Changing a plugin setting or selecting a global mode also reapplies the configuration to all open Markdown notes.
 
@@ -77,7 +83,7 @@ You can assign hotkeys to these commands in **Settings → Hotkeys**.
 | `Set global lock (reading)` | Apply Reading mode to open notes and use it for newly opened notes. |
 | `Set global mode to editing` | Apply rules, with Editing as the fallback. |
 
-You can still switch individual notes between Reading and Editing after using any of these commands.
+After using these commands, manual switching is allowed unless the winning rule has **Keep Reading mode** enabled.
 
 ## Translations
 
