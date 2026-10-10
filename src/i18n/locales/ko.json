@@ -34,7 +34,7 @@
   "notice.auto": "Dynamic Lock: 자동 모드로 전환했어요.",
   "notice.force-reading": "Dynamic Lock: 읽기 모드로 전환했어요.",
   "notice.force-editing": "Dynamic Lock: 편집 모드로 전환했어요.",
-  "tooltip.auto": "속성·폴더·기간 규칙에 따라 모드를 정해요.\n클릭하면 잠금 모드로 전환해요.",
-  "tooltip.force-reading": "열린 모든 노트를 읽기 모드로 유지해요.\n클릭하면 편집 모드로 전환해요.",
-  "tooltip.force-editing": "노트를 편집 모드로 열어요. 잠금 규칙에 해당하는 노트는 읽기 모드를 유지해요.\n클릭하면 자동 모드로 전환해요."
+  "tooltip.auto": "노트를 열 때 속성·폴더·기간 규칙을 적용해요. 이후 읽기·편집은 자유롭게 전환할 수 있어요.\n클릭하면 잠금 모드로 전환해요.",
+  "tooltip.force-reading": "노트를 읽기 모드로 열어요. 이후 편집 모드로 직접 전환할 수 있어요.\n클릭하면 편집 모드로 전환해요.",
+  "tooltip.force-editing": "노트를 편집 모드로 열되 잠금 규칙을 우선 적용해요. 이후 읽기·편집은 자유롭게 전환할 수 있어요.\n클릭하면 자동 모드로 전환해요."
 }

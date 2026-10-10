@@ -34,7 +34,7 @@
   "notice.auto": "Dynamic Lock: Switched to auto mode",
   "notice.force-reading": "Dynamic Lock: Switched to reading mode",
   "notice.force-editing": "Dynamic Lock: Switched to editing mode",
-  "tooltip.auto": "Apply property, folder, and age rules to determine the mode.\nClick to switch to Locked.",
-  "tooltip.force-reading": "Keep all open notes in Reading mode.\nClick to switch to Editing.",
-  "tooltip.force-editing": "Open notes in Editing mode. Notes with matching lock rules stay in Reading mode.\nClick to switch to Auto."
+  "tooltip.auto": "Apply property, folder, and age rules when opening notes. Switch freely between Reading and Editing afterward.\nClick to switch to Locked.",
+  "tooltip.force-reading": "Open notes in Reading mode. You can switch to Editing afterward.\nClick to switch to Editing.",
+  "tooltip.force-editing": "Open notes in Editing mode unless a lock rule matches. Switch freely between Reading and Editing afterward.\nClick to switch to Auto."
 }

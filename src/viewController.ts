@@ -16,6 +16,8 @@ export class ViewController {
 	private saveSettings: () => Promise<void>;
 	private statusBarItem: HTMLElement;
 	private lastPathPerView = new WeakMap<MarkdownView, string>();
+	private lastModePerView = new WeakMap<MarkdownView, string>();
+	private manualModeViews = new WeakSet<MarkdownView>();
 	private lastRequiredMode = new WeakMap<MarkdownView, ViewMode | null>();
 	private updates = new Map<MarkdownView, {
 		requested: boolean;
@@ -75,16 +77,22 @@ export class ViewController {
 		const settings = this.getSettings();
 		const requiredMode = getRequiredViewMode(this.app, file, settings);
 		const isNavigation = this.lastPathPerView.get(view) !== file.path;
-		const ruleReleased = this.lastRequiredMode.get(view) != null && requiredMode === null;
+		const ruleChanged = this.lastRequiredMode.get(view) !== requiredMode;
+		if (isNavigation || applyDefault) {
+			this.manualModeViews.delete(view);
+		} else if (this.lastModePerView.has(view) && this.lastModePerView.get(view) !== view.getMode()) {
+			this.manualModeViews.add(view);
+		}
 		this.lastPathPerView.set(view, file.path);
 		this.lastRequiredMode.set(view, requiredMode);
 
-		const mode = requiredMode ?? ((isNavigation || applyDefault || ruleReleased) && settings.defaultMode !== 'keep'
-			? settings.defaultMode : null);
+		const shouldApply = isNavigation || applyDefault || (ruleChanged && !this.manualModeViews.has(view));
+		const mode = shouldApply ? requiredMode ?? (settings.defaultMode !== 'keep' ? settings.defaultMode : null) : null;
 		if (mode && view.getMode() !== mode) {
 			await view.setState({ ...view.getState(), mode }, { history: false });
 		}
 		if (!this.disposed && view.file === file) {
+			this.lastModePerView.set(view, view.getMode());
 			this.updateTabLockIcon(view, view.getMode() === 'preview');
 		}
 	}

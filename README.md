@@ -14,7 +14,7 @@ Move seamlessly between **writing** and **referencing**. Protect your finished n
 ## Features
 
 - **Smart Lock Logic**:
-    - **Strong Lock (Reading)**: Keeps all open Markdown notes in Reading mode for review or presentation.
+    - **Strong Lock (Reading)**: Opens Markdown notes in Reading mode for review or presentation.
     - **Safe Edit (Editing)**: Allows editing but respects explicit locks on archived files.
 - **Folder Rules**: Automatically lock files in specific folders (e.g., `Archives/`, `References/`). Supports Longest Prefix Match.
 - **Frontmatter Rules**: Lock individual files using metadata (e.g., `status: done`, `type: archive`).
@@ -38,11 +38,11 @@ Dynamic Lock determines the view mode based on a **Priority System**:
 6.  **Auto Mode**:
     - **Strict Rules**: Locks files matching the rules above.
     - **Free Navigation**: Newly opened files use **Default mode** when no rule matches (initially **Keep current**).
-    - **Tab Persistence**: Switching tabs preserves your manual mode (Reading/Editing) for files without a matching rule.
+    - **Tab Persistence**: Switching tabs preserves your manual mode (Reading/Editing) for all open files, including files matching a rule.
 
 ---
 
-Rules are reapplied to open notes when properties, settings, or folder paths change, and when the plugin starts. Matching rules remain enforced when switching view modes. When a rule stops matching, the configured **Default mode** applies; **Keep current** leaves the view as it is.
+Rules are reapplied to open notes when properties, settings, or folder paths change, and when the plugin starts. Manual Reading/Editing changes take priority after opening a note and survive tab switches and property updates. Opening another file or explicitly changing plugin settings reapplies the configured modes. When a rule stops matching, the configured **Default mode** applies; **Keep current** leaves the view as it is.
 
 ## Usage
 

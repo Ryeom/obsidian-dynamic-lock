@@ -105,14 +105,18 @@ test('saved global lock applies at startup, to both open panes', async () => {
   assert.deepEqual(views.map(view => view.mode), ['preview', 'preview']);
 });
 
-test('global commands update every pane and reading stays enforced', async () => {
+test('global commands update every pane but subsequent manual mode changes persist', async () => {
   const { plugin, views, workspace } = await fixture();
   await command(plugin, 'set-global-mode-reading');
   assert.deepEqual(views.map(view => view.mode), ['preview', 'preview']);
   views[1].mode = 'source';
   workspace.trigger('layout-change');
   await setImmediate();
-  assert.equal(views[1].mode, 'preview');
+  assert.equal(views[1].mode, 'source');
+  workspace.trigger('active-leaf-change');
+  workspace.trigger('file-open', views[1].file);
+  await setImmediate();
+  assert.equal(views[1].mode, 'source');
   await command(plugin, 'set-global-mode-editing');
   assert.deepEqual(views.map(view => view.mode), ['source', 'source']);
 });
@@ -237,4 +241,39 @@ test('Korean app language translates commands, status, and notices while preserv
   } finally {
     appLanguage = 'en';
   }
+});
+
+
+test('manual override survives metadata changes until a new file or explicit settings change', async () => {
+  const { plugin, views, workspace, caches, metadataCache } = await fixture({
+    folderRules: [{ path: 'Archive', mode: 'preview' }],
+  });
+  views[0].file = { ...views[0].file, path: 'Archive/note.md' };
+  workspace.trigger('file-open', views[0].file);
+  await setImmediate();
+  assert.equal(views[0].mode, 'preview');
+  await views[0].setState({ mode: 'source' });
+  await setImmediate();
+  caches.set(views[0].file.path, { frontmatter: { status: 'draft' } });
+  metadataCache.trigger('changed', views[0].file);
+  workspace.trigger('active-leaf-change');
+  await setImmediate();
+  assert.equal(views[0].mode, 'source');
+  assert.equal(views[0].leaf.tabHeaderEl.classes.has('dynamic-lock-locked'), false);
+  await command(plugin, 'set-global-mode-reading');
+  assert.equal(views[0].mode, 'preview');
+  await views[0].setState({ mode: 'source' });
+  await setImmediate();
+  views[0].file = { ...views[0].file, path: 'new.md' };
+  workspace.trigger('file-open', views[0].file);
+  await setImmediate();
+  assert.equal(views[0].mode, 'preview');
+});
+
+test('global editing also allows manually switching to reading', async () => {
+  const { views, workspace } = await fixture({ globalMode: 'force-editing' });
+  await views[0].setState({ mode: 'preview' });
+  workspace.trigger('active-leaf-change');
+  await setImmediate();
+  assert.equal(views[0].mode, 'preview');
 });
