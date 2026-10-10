@@ -1,6 +1,7 @@
 import { App, MarkdownView, Notice, setIcon, TFile } from 'obsidian';
 import { DynamicLockSettings, ViewMode } from './types';
 import { getRequiredViewMode } from './lockResolver';
+import { createTranslator } from './i18n';
 
 export interface ViewControllerDeps {
 	app: App;
@@ -125,7 +126,7 @@ export class ViewController {
 			to: mode
 		});
 
-		new Notice(`Dynamic Lock: Switched to ${mode}`);
+		new Notice(createTranslator()(`notice.${mode}`));
 	}
 
 	updateStatusBar(): void {
@@ -136,21 +137,23 @@ export class ViewController {
 
 		const settings = this.getSettings();
 		let iconName = 'sparkles';
-		let text = ' Auto';
+		const t = createTranslator();
+		this.statusBarItem.title = t(`tooltip.${settings.globalMode || 'auto'}`);
+		let text = t('status.auto');
 
 		switch (settings.globalMode) {
 			case 'auto':
 				iconName = 'sparkles';
-				text = ' Auto';
+				text = t('status.auto');
 				break;
 			case 'force-reading':
 				iconName = 'lock';
-				text = ' Locked';
+				text = t('status.force-reading');
 				this.statusBarItem.addClass('mod-error');
 				break;
 			case 'force-editing':
 				iconName = 'lock-open';
-				text = ' Editing';
+				text = t('status.force-editing');
 				this.statusBarItem.addClass('mod-success');
 				break;
 		}
@@ -160,6 +163,6 @@ export class ViewController {
 		iconSpan.setCssProps({ 'margin-right': '4px' });
 
 		const textSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-segment' });
-		textSpan.setText(text);
+		textSpan.setText(` ${text}`);
 	}
 }

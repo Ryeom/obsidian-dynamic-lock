@@ -2,6 +2,7 @@ import { Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, DynamicLockSettings } from './types';
 import { DynamicLockSettingTab } from './settings';
 import { ViewController } from './viewController';
+import { createTranslator } from './i18n';
 
 export default class DynamicLockPlugin extends Plugin {
 	settings: DynamicLockSettings;
@@ -37,9 +38,10 @@ export default class DynamicLockPlugin extends Plugin {
 	}
 
 	private registerCommands() {
+		const t = createTranslator();
 		this.addCommand({
 			id: 'cycle-global-mode',
-			name: 'Cycle global mode',
+			name: t('command.cycle'),
 			callback: async () => {
 				const modes: ['auto', 'force-reading', 'force-editing'] = ['auto', 'force-reading', 'force-editing'];
 				const currentIndex = modes.indexOf(this.settings.globalMode || 'auto');
@@ -50,19 +52,19 @@ export default class DynamicLockPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'set-global-mode-auto',
-			name: 'Set global mode to auto',
+			name: t('command.auto'),
 			callback: async () => this.viewController.setGlobalMode('auto')
 		});
 
 		this.addCommand({
 			id: 'set-global-mode-reading',
-			name: 'Set global lock (reading)',
+			name: t('command.reading'),
 			callback: async () => this.viewController.setGlobalMode('force-reading')
 		});
 
 		this.addCommand({
 			id: 'set-global-mode-editing',
-			name: 'Set global mode to editing',
+			name: t('command.editing'),
 			callback: async () => this.viewController.setGlobalMode('force-editing')
 		});
 	}

@@ -82,6 +82,14 @@ Locked status is clear and intuitive:
 
 ---
 
+## Translations
+
+Settings, commands, status bar text, and notices follow the Obsidian app language. English and Korean are included. On older Obsidian versions without the language API (before 1.8.7), the plugin uses English.
+
+To add a language, copy `src/i18n/locales/en.json` to `<language-code>.json` in the same folder, then translate the values without changing the keys. Use lowercase Obsidian language codes, such as `ja.json` or `pt-br.json`. Run `npm run build`: all locale JSON files are discovered automatically and included in `main.js`; no import list or separate translation files are needed for installation. After installing the rebuilt plugin, reload it.
+
+Regional translations fall back to the base language and then English. Missing, empty, or non-string values also fall back. Translations only change display text; saved rule values, command IDs, mode values, and existing hotkeys stay the same. Reload the plugin after changing the Obsidian language to update command names.
+
 ## Commands
 
 | Command | Action |

@@ -20,10 +20,12 @@ class Events {
 function element() {
   const classes = new Set();
   return {
-    classes,
+    classes, children: [], text: '',
     addClass: name => classes.add(name),
     removeClass: (...names) => names.forEach(name => classes.delete(name)),
-    empty() {}, createSpan: () => element(), setText() {}, setCssProps() {},
+    empty() { this.children = []; },
+    createSpan() { const child = element(); this.children.push(child); return child; },
+    setText(text) { this.text = text; }, setCssProps() {},
   };
 }
 
@@ -60,10 +62,13 @@ const { outputFiles } = await build({
   entryPoints: ['src/main.ts'], bundle: true, write: false, platform: 'node',
   format: 'cjs', external: ['obsidian'],
 });
+let appLanguage = 'en';
+const notices = [];
 const context = {
   module: { exports: {} }, console: { debug() {}, error: console.error },
   require: () => ({
-    Plugin, MarkdownView, Notice: class {}, setIcon() {},
+    Plugin, MarkdownView, Notice: class { constructor(message) { notices.push(message); } }, setIcon() {},
+    getLanguage: () => appLanguage,
     PluginSettingTab: class {}, AbstractInputSuggest: class {}, TFolder: class {},
   }),
 };
@@ -207,4 +212,29 @@ test('removing a matching property restores the configured default without repea
   metadataCache.trigger('changed', views[0].file);
   await setImmediate();
   assert.equal(views[0].mode, 'preview');
+});
+
+
+test('Korean app language translates commands, status, and notices while preserving command IDs', async () => {
+  appLanguage = 'ko';
+  try {
+    const { plugin } = await fixture();
+    assert.deepEqual(Array.from(plugin.commands, c => [c.id, c.name]), [
+      ['cycle-global-mode', '전역 모드 전환'],
+      ['set-global-mode-auto', '전역 모드를 자동으로 설정'],
+      ['set-global-mode-reading', '전역 잠금 설정 (읽기)'],
+      ['set-global-mode-editing', '전역 모드를 편집으로 설정'],
+    ]);
+    for (const [id, status, notice] of [
+      ['set-global-mode-reading', '잠금', '읽기'],
+      ['set-global-mode-editing', '편집', '편집'],
+      ['set-global-mode-auto', '자동', '자동'],
+    ]) {
+      await command(plugin, id);
+      assert.equal(plugin.statusBarItem.children.at(-1).text.trim(), status);
+      assert.equal(notices.at(-1), `Dynamic Lock: ${notice} 모드로 전환했어요.`);
+    }
+  } finally {
+    appLanguage = 'en';
+  }
 });

@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, ButtonComponent, AbstractInputSuggest, TFolder } from "obsidian";
 import DynamicLockPlugin from "./main";
 import { ViewMode } from "./types";
+import { createTranslator } from "./i18n";
 
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 	inputEl: HTMLInputElement;
@@ -45,16 +46,17 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
+		const t = createTranslator();
 
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Default mode')
-			.setDesc('Behavior when no rules match.')
+			.setName(t('defaultMode.name'))
+			.setDesc(t('defaultMode.description'))
 			.addDropdown(dropdown => dropdown
-				.addOption('keep', 'Keep current')
-				.addOption('source', 'Editing')
-				.addOption('preview', 'Reading')
+				.addOption('keep', t('mode.keep'))
+				.addOption('source', t('mode.editing'))
+				.addOption('preview', t('mode.reading'))
 				.setValue(this.plugin.settings.defaultMode)
 				.onChange(async (value) => {
 					this.plugin.settings.defaultMode = value as 'keep' | ViewMode;
@@ -62,13 +64,13 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Time-based lock')
-			.setDesc('Automatically lock files older than a certain period.')
+			.setName(t('timeLock.heading'))
+			.setDesc(t('timeLock.description'))
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Enable time lock')
-			.setDesc('Turn on auto-locking for old notes.')
+			.setName(t('timeLock.enabled.name'))
+			.setDesc(t('timeLock.enabled.description'))
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.timeLockEnabled)
 				.onChange(async (value) => {
@@ -79,8 +81,8 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 
 		if (this.plugin.settings.timeLockEnabled) {
 			new Setting(containerEl)
-				.setName('Review period (days)')
-				.setDesc('Lock file if age exceeds this many days.')
+				.setName(t('timeLock.days.name'))
+				.setDesc(t('timeLock.days.description'))
 				.addText(text => text
 					.setValue(String(this.plugin.settings.timeLockDays))
 					.onChange(async (value) => {
@@ -92,11 +94,11 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					}));
 
 			new Setting(containerEl)
-				.setName('Basis date')
-				.setDesc('Which date to use for age calculation.')
+				.setName(t('timeLock.metric.name'))
+				.setDesc(t('timeLock.metric.description'))
 				.addDropdown(dropdown => dropdown
-					.addOption('ctime', 'Creation date')
-					.addOption('mtime', 'Last modified date')
+					.addOption('ctime', t('timeLock.metric.created'))
+					.addOption('mtime', t('timeLock.metric.modified'))
 					.setValue(this.plugin.settings.timeLockMetric)
 					.onChange(async (value) => {
 						this.plugin.settings.timeLockMetric = value as 'ctime' | 'mtime';
@@ -105,14 +107,14 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl)
-			.setName('Frontmatter rules')
-			.setDesc('Define rules to dynamically switch modes based on file properties.')
+			.setName(t('frontmatter.heading'))
+			.setDesc(t('frontmatter.description'))
 			.setHeading();
 
 		new Setting(containerEl)
 			.addButton((btn: ButtonComponent) => {
 				btn
-					.setButtonText("Add rule")
+					.setButtonText(t('frontmatter.add'))
 					.setCta()
 					.onClick(async () => {
 						this.plugin.settings.rules.push({
@@ -128,22 +130,22 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 		this.plugin.settings.rules.forEach((rule, index) => {
 			new Setting(containerEl)
 				.addText(text => text
-					.setPlaceholder('Attribute (e.g., status)')
+					.setPlaceholder(t('frontmatter.attributePlaceholder'))
 					.setValue(rule.attribute)
 					.onChange(async (value) => {
 						rule.attribute = value;
 						await this.plugin.saveSettings();
 					}))
 				.addText(text => text
-					.setPlaceholder('Value (e.g., done)')
+					.setPlaceholder(t('frontmatter.valuePlaceholder'))
 					.setValue(rule.value)
 					.onChange(async (value) => {
 						rule.value = value;
 						await this.plugin.saveSettings();
 					}))
 				.addDropdown(dropdown => dropdown
-					.addOption('source', 'Editing')
-					.addOption('preview', 'Reading')
+					.addOption('source', t('mode.editing'))
+					.addOption('preview', t('mode.reading'))
 					.setValue(rule.mode)
 					.onChange(async (value) => {
 						rule.mode = value as ViewMode;
@@ -151,7 +153,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					}))
 				.addExtraButton(cb => cb
 					.setIcon("cross")
-					.setTooltip("Delete rule")
+					.setTooltip(t('rule.delete'))
 					.onClick(async () => {
 						this.plugin.settings.rules.splice(index, 1);
 						await this.plugin.saveSettings();
@@ -160,14 +162,14 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl)
-			.setName('Folder rules')
-			.setDesc('Define rules based on file path. Longest prefix match will be applied.')
+			.setName(t('folder.heading'))
+			.setDesc(t('folder.description'))
 			.setHeading();
 
 		new Setting(containerEl)
 			.addButton((btn: ButtonComponent) => {
 				btn
-					.setButtonText("Add folder rule")
+					.setButtonText(t('folder.add'))
 					.setCta()
 					.onClick(async () => {
 						this.plugin.settings.folderRules.push({
@@ -183,7 +185,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 			new Setting(containerEl)
 				.addText(text => {
 					text
-						.setPlaceholder('Folder Path (e.g. Archives/)')
+						.setPlaceholder(t('folder.pathPlaceholder'))
 						.setValue(rule.path)
 						.onChange(async (value) => {
 							rule.path = value;
@@ -192,8 +194,8 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					new FolderSuggest(this.app, text.inputEl);
 				})
 				.addDropdown(dropdown => dropdown
-					.addOption('source', 'Editing')
-					.addOption('preview', 'Reading')
+					.addOption('source', t('mode.editing'))
+					.addOption('preview', t('mode.reading'))
 					.setValue(rule.mode)
 					.onChange(async (value) => {
 						rule.mode = value as ViewMode;
@@ -201,7 +203,7 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					}))
 				.addExtraButton(cb => cb
 					.setIcon("cross")
-					.setTooltip("Delete rule")
+					.setTooltip(t('rule.delete'))
 					.onClick(async () => {
 						this.plugin.settings.folderRules.splice(index, 1);
 						await this.plugin.saveSettings();
