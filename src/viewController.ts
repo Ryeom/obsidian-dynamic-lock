@@ -166,9 +166,8 @@ export class ViewController {
 				break;
 		}
 
-		const iconSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-icon' });
+		const iconSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-icon dynamic-lock-status-icon' });
 		setIcon(iconSpan, iconName);
-		iconSpan.setCssProps({ 'margin-right': '4px' });
 
 		const textSpan = this.statusBarItem.createSpan({ cls: 'status-bar-item-segment' });
 		textSpan.setText(` ${text}`);

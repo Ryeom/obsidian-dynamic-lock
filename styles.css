@@ -30,3 +30,7 @@
    This avoids conflicts with Obsidian's internal layout engines. 
    .workspace-tab-header-inner-title { display: flex; ... } 
 */
+
+.dynamic-lock-status-icon {
+    margin-right: 4px;
+}

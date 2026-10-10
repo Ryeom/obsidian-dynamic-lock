@@ -1,8 +1,8 @@
 {
 	"id": "dynamic-lock",
 	"name": "Dynamic Lock",
-	"version": "1.3.4",
-	"minAppVersion": "0.15.0",
+	"version": "1.3.5",
+	"minAppVersion": "1.4.10",
 	"description": "Dynamically switch between Reading and Editing modes based on file properties, folders, or time.",
 	"author": "Ryeom",
 	"authorUrl": "https://github.com/Ryeom",
