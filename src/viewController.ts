@@ -56,12 +56,15 @@ export class ViewController {
 
 	private installModeGuard(view: MarkdownView): void {
 		if (this.originalSetState.has(view)) return;
-		const originalSetState = view.setState;
+		const originalSetState = view.setState.bind(view);
 		this.originalSetState.set(view, originalSetState);
-		view.setState = (state, result) => {
+		view.setState = (state: unknown, result) => {
 			const file = view.file;
 			const rule = file ? resolveViewRule(this.app, file, this.getSettings()) : null;
-			if (state?.mode === 'source' && rule?.locked) {
+			const requestedMode = typeof state === 'object' && state !== null && 'mode' in state
+				? state.mode
+				: undefined;
+			if (requestedMode === 'source' && rule?.locked) {
 				const t = createTranslator();
 				const reason = rule.lockReason;
 				const message = reason?.type === 'property'
@@ -72,7 +75,7 @@ export class ViewController {
 				new Notice(message);
 				return Promise.resolve();
 			}
-			return originalSetState.call(view, state, result);
+			return originalSetState(state, result);
 		};
 	}
 
