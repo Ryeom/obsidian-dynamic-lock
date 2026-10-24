@@ -36,15 +36,22 @@ export class ViewController {
 
 	async refreshViews(file?: TFile, applyDefault = false): Promise<void> {
 		if (this.disposed) return;
-		const views = this.app.workspace.getLeavesOfType('markdown')
+		const markdownViews = this.app.workspace.getLeavesOfType('markdown')
 			.map(leaf => leaf.view)
-			.filter((view): view is MarkdownView => view instanceof MarkdownView)
-			.filter(view => view.file);
+			.filter((view): view is MarkdownView => view instanceof MarkdownView);
+		const views = markdownViews.filter(view => view.file);
+		this.releaseClosedViews(new Set(markdownViews));
 		for (const view of views) this.installModeGuard(view);
 		const updates = views
 			.filter(view => !file || view.file?.path === file.path)
 			.map(view => this.queueUpdate(view, applyDefault));
 		await Promise.all(updates);
+	}
+
+	private releaseClosedViews(openViews: Set<MarkdownView>): void {
+		for (const [view] of this.originalSetState) {
+			if (!openViews.has(view)) this.originalSetState.delete(view);
+		}
 	}
 
 	private installModeGuard(view: MarkdownView): void {
