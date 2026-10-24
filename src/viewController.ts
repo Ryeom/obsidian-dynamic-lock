@@ -19,6 +19,7 @@ export class ViewController {
 	private lastModePerView = new WeakMap<MarkdownView, string>();
 	private manualModeViews = new WeakSet<MarkdownView>();
 	private lastRequiredMode = new WeakMap<MarkdownView, ViewMode | null>();
+	private originalSetState = new Map<MarkdownView, MarkdownView['setState']>();
 	private updates = new Map<MarkdownView, {
 		requested: boolean;
 		applyDefault: boolean;
@@ -35,12 +36,37 @@ export class ViewController {
 
 	async refreshViews(file?: TFile, applyDefault = false): Promise<void> {
 		if (this.disposed) return;
-		const updates = this.app.workspace.getLeavesOfType('markdown')
+		const views = this.app.workspace.getLeavesOfType('markdown')
 			.map(leaf => leaf.view)
 			.filter((view): view is MarkdownView => view instanceof MarkdownView)
-			.filter(view => view.file && (!file || view.file.path === file.path))
+			.filter(view => view.file);
+		for (const view of views) this.installModeGuard(view);
+		const updates = views
+			.filter(view => !file || view.file?.path === file.path)
 			.map(view => this.queueUpdate(view, applyDefault));
 		await Promise.all(updates);
+	}
+
+	private installModeGuard(view: MarkdownView): void {
+		if (this.originalSetState.has(view)) return;
+		const originalSetState = view.setState;
+		this.originalSetState.set(view, originalSetState);
+		view.setState = (state, result) => {
+			const file = view.file;
+			const rule = file ? resolveViewRule(this.app, file, this.getSettings()) : null;
+			if (state?.mode === 'source' && rule?.locked) {
+				const t = createTranslator();
+				const reason = rule.lockReason;
+				const message = reason?.type === 'property'
+					? t('notice.readOnly.property', { attribute: reason.attribute, value: reason.value })
+					: reason?.type === 'folder'
+						? t('notice.readOnly.folder', { path: reason.path })
+						: t('notice.readOnly');
+				new Notice(message);
+				return Promise.resolve();
+			}
+			return originalSetState.call(view, state, result);
+		};
 	}
 
 	private queueUpdate(view: MarkdownView, applyDefault: boolean): Promise<void> {
@@ -77,10 +103,10 @@ export class ViewController {
 		const settings = this.getSettings();
 		const rule = resolveViewRule(this.app, file, settings);
 		const requiredMode = rule?.mode ?? null;
-		const keepReading = rule?.keepReading === true;
+		const locked = rule?.locked === true;
 		const isNavigation = this.lastPathPerView.get(view) !== file.path;
 		const ruleChanged = this.lastRequiredMode.get(view) !== requiredMode;
-		if (isNavigation || applyDefault || keepReading) {
+		if (isNavigation || applyDefault || locked) {
 			this.manualModeViews.delete(view);
 		} else if (this.lastModePerView.has(view) && this.lastModePerView.get(view) !== view.getMode()) {
 			this.manualModeViews.add(view);
@@ -88,14 +114,14 @@ export class ViewController {
 		this.lastPathPerView.set(view, file.path);
 		this.lastRequiredMode.set(view, requiredMode);
 
-		const shouldApply = keepReading || isNavigation || applyDefault || (ruleChanged && !this.manualModeViews.has(view));
+		const shouldApply = locked || isNavigation || applyDefault || (ruleChanged && !this.manualModeViews.has(view));
 		const mode = shouldApply ? requiredMode ?? (settings.defaultMode !== 'keep' ? settings.defaultMode : null) : null;
 		if (mode && view.getMode() !== mode) {
 			await view.setState({ ...view.getState(), mode }, { history: false });
 		}
 		if (!this.disposed && view.file === file) {
 			this.lastModePerView.set(view, view.getMode());
-			this.updateTabLockIcon(view, view.getMode() === 'preview');
+			this.updateTabLockIcon(view, locked);
 		}
 	}
 
@@ -105,9 +131,14 @@ export class ViewController {
 
 	dispose(): void {
 		this.disposed = true;
+		for (const [view, originalSetState] of this.originalSetState) {
+			view.setState = originalSetState;
+		}
+		this.originalSetState.clear();
 		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
 			if (leaf.view instanceof MarkdownView) {
-				this.updateTabLockIcon(leaf.view, false);
+				const tabHeader = (leaf.view.leaf as unknown as { tabHeaderEl: HTMLElement }).tabHeaderEl;
+				tabHeader?.removeClass('dynamic-lock-locked', 'dynamic-lock-unlocked');
 			}
 		}
 	}
@@ -119,8 +150,10 @@ export class ViewController {
 		if (tabHeader) {
 			if (locked) {
 				tabHeader.addClass('dynamic-lock-locked');
+				tabHeader.removeClass('dynamic-lock-unlocked');
 			} else {
 				tabHeader.removeClass('dynamic-lock-locked');
+				tabHeader.addClass('dynamic-lock-unlocked');
 			}
 		}
 	}

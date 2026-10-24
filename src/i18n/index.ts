@@ -17,17 +17,26 @@ function loadMessages(language: string): Messages {
 
 export function createTranslator(
 	language = typeof getLanguage === 'function' ? getLanguage() : 'en'
-): (key: TranslationKey) => string {
+): (key: TranslationKey, params?: Record<string, string>) => string {
 	const locale = language.trim().toLowerCase().replace(/_/g, '-');
 	const baseLocale = locale.split('-')[0]!;
 	const dictionaries = [loadMessages(locale)];
 	if (baseLocale !== locale) dictionaries.push(loadMessages(baseLocale));
 
-	return key => {
+	return (key, params) => {
+		let message = english[key];
 		for (const messages of dictionaries) {
 			const value = messages[key];
-			if (typeof value === 'string' && value.trim()) return value;
+			if (typeof value === 'string' && value.trim()) {
+				message = value;
+				break;
+			}
 		}
-		return english[key];
+		if (params) {
+			for (const [name, value] of Object.entries(params)) {
+				message = message.split(`{{${name}}}`).join(value);
+			}
+		}
+		return message;
 	};
 }

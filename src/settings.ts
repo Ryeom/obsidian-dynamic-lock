@@ -150,7 +150,10 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					.setValue(rule.mode)
 					.onChange(async (value) => {
 						rule.mode = value as ViewMode;
-						if (rule.mode !== 'preview') rule.keepReading = false;
+						if (rule.mode !== 'preview') {
+							rule.keepReading = false;
+							rule.locked = false;
+						}
 						await this.plugin.saveSettings();
 						this.display();
 					}))
@@ -203,7 +206,10 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 					.setValue(rule.mode)
 					.onChange(async (value) => {
 						rule.mode = value as ViewMode;
-						if (rule.mode !== 'preview') rule.keepReading = false;
+						if (rule.mode !== 'preview') {
+							rule.keepReading = false;
+							rule.locked = false;
+						}
 						await this.plugin.saveSettings();
 						this.display();
 					}))
@@ -223,13 +229,13 @@ export class DynamicLockSettingTab extends PluginSettingTab {
 	private addKeepReadingToggle(setting: Setting, rule: Rule | FolderRule): void {
 		if (rule.mode !== 'preview') return;
 		const t = createTranslator();
-		setting.controlEl.createSpan({ text: t('rule.keepReading.label'), cls: 'dynamic-lock-keep-reading-label' });
+		setting.controlEl.createSpan({ text: t('rule.locked.label'), cls: 'dynamic-lock-keep-reading-label' });
 		setting
 			.addToggle(toggle => toggle
-				.setTooltip(`${t('rule.keepReading.name')}: ${t('rule.keepReading.description')}`, { delay: 100 })
-				.setValue(rule.keepReading === true)
+				.setTooltip(`${t('rule.locked.name')}: ${t('rule.locked.description')}`, { delay: 100 })
+				.setValue(rule.locked ?? rule.keepReading ?? false)
 				.onChange(async value => {
-					rule.keepReading = value;
+					rule.locked = value;
 					await this.plugin.saveSettings();
 				}));
 	}

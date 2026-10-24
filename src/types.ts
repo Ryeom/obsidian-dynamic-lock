@@ -5,12 +5,14 @@ export interface Rule {
 	value: string;
 	mode: ViewMode;
 	keepReading?: boolean;
+	locked?: boolean;
 }
 
 export interface FolderRule {
 	path: string;
 	mode: ViewMode;
 	keepReading?: boolean;
+	locked?: boolean;
 }
 
 export interface DynamicLockSettings {

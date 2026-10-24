@@ -37,7 +37,10 @@
   "tooltip.auto": "Apply property, folder, and age rules when opening notes. Switch freely between Reading and Editing afterward.\nClick to switch to Locked.",
   "tooltip.force-reading": "Open notes in Reading mode. You can switch to Editing afterward.\nClick to switch to Editing.",
   "tooltip.force-editing": "Open notes in Editing mode unless a lock rule matches. Switch freely between Reading and Editing afterward.\nClick to switch to Auto.",
-  "rule.keepReading.label": "Keep reading",
-  "rule.keepReading.name": "Keep Reading mode",
-  "rule.keepReading.description": "Switch back to Reading when you change to Editing. Turn this off to edit the note."
+  "rule.locked.label": "Read-only",
+  "rule.locked.name": "Read-only",
+  "rule.locked.description": "Block the switch to Editing and show a notice. Turn this off to edit the note.",
+  "notice.readOnly": "This file cannot be edited.",
+  "notice.readOnly.property": "This file is locked by the following rule.\n{{attribute}} = {{value}}",
+  "notice.readOnly.folder": "This file is locked by the following rule.\n{{path}}"
 }

@@ -1,5 +1,9 @@
 import { App, TFile } from 'obsidian';
-import { DynamicLockSettings, ViewMode } from './types';
+import { DynamicLockSettings, FolderRule, Rule, ViewMode } from './types';
+
+export type RuleLockReason =
+	| { type: 'property'; attribute: string; value: string }
+	| { type: 'folder'; path: string };
 
 /**
  * Determines the required view mode for a file based on the priority system:
@@ -14,13 +18,15 @@ export function resolveViewRule(
 	app: App,
 	file: TFile,
 	settings: DynamicLockSettings
-): { mode: ViewMode; keepReading: boolean } | null {
+	): { mode: ViewMode; locked: boolean; lockReason?: RuleLockReason } | null {
 	const { globalMode, rules, folderRules } = settings;
 
-	// 1. Global Reading (initial mode only)
+	// Global Reading chooses the mode first, but a matching per-file rule can
+	// still enforce its read-only setting.
 	if (globalMode === 'force-reading') {
 		console.debug('[DynamicLock] Rule matched: Global force-reading');
-		return { mode: 'preview', keepReading: false };
+		const lockReason = resolveMatchingRuleLockReason(app, file, rules, folderRules);
+		return { mode: 'preview', locked: lockReason !== null, lockReason: lockReason ?? undefined };
 	}
 
 	// 2. Frontmatter Rules
@@ -33,7 +39,10 @@ export function resolveViewRule(
 					rule: `${rule.attribute}=${rule.value}`,
 					mode: rule.mode
 				});
-				return { mode: rule.mode, keepReading: rule.mode === 'preview' && rule.keepReading === true };
+				const lockReason = rule.mode === 'preview' && (rule.locked ?? rule.keepReading) === true
+					? { type: 'property' as const, attribute: rule.attribute, value: rule.value }
+					: undefined;
+				return { mode: rule.mode, locked: lockReason !== undefined, lockReason };
 			}
 		}
 	}
@@ -53,7 +62,10 @@ export function resolveViewRule(
 				folderRule: matched.path,
 				mode: matched.mode
 			});
-			return { mode: matched.mode, keepReading: matched.mode === 'preview' && matched.keepReading === true };
+			const lockReason = matched.mode === 'preview' && (matched.locked ?? matched.keepReading) === true
+				? { type: 'folder' as const, path: matched.path }
+				: undefined;
+			return { mode: matched.mode, locked: lockReason !== undefined, lockReason };
 		}
 	}
 
@@ -72,7 +84,7 @@ export function resolveViewRule(
 					threshold: settings.timeLockDays,
 					metric: settings.timeLockMetric
 				});
-				return { mode: 'preview', keepReading: false };
+				return { mode: 'preview', locked: false };
 			}
 		}
 	}
@@ -80,7 +92,7 @@ export function resolveViewRule(
 	// 5. Force Editing
 	if (globalMode === 'force-editing') {
 		console.debug('[DynamicLock] Rule matched: Global force-editing');
-		return { mode: 'source', keepReading: false };
+		return { mode: 'source', locked: false };
 	}
 
 	// 6. No match
@@ -88,4 +100,34 @@ export function resolveViewRule(
 		file: file.path
 	});
 	return null;
+}
+
+function resolveMatchingRuleLockReason(
+	app: App,
+	file: TFile,
+	rules: Rule[],
+	folderRules: FolderRule[]
+): RuleLockReason | null {
+	const cache = app.metadataCache.getFileCache(file);
+	if (cache?.frontmatter) {
+		for (const rule of rules) {
+			if (String(cache.frontmatter[rule.attribute]) === rule.value) {
+				return rule.mode === 'preview' && (rule.locked ?? rule.keepReading) === true
+					? { type: 'property', attribute: rule.attribute, value: rule.value }
+					: null;
+			}
+		}
+	}
+
+	const matchingFolders = folderRules.filter(rule => {
+		const normalizedPath = rule.path.endsWith('/') ? rule.path : rule.path + '/';
+		return file.path.startsWith(normalizedPath);
+	});
+	if (matchingFolders.length === 0) return null;
+
+	matchingFolders.sort((a, b) => b.path.length - a.path.length);
+	const matchingFolder = matchingFolders[0]!;
+	return matchingFolder.mode === 'preview' && (matchingFolder.locked ?? matchingFolder.keepReading) === true
+		? { type: 'folder', path: matchingFolder.path }
+		: null;
 }
