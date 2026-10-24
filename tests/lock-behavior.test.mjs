@@ -170,6 +170,17 @@ test('settings apply immediately; explicit file lock outranks global editing', a
   assert.deepEqual(views.map(view => view.mode), ['source', 'preview']);
 });
 
+test('explicit file lock blocks manual editing and explains the matching rule', async () => {
+  const { plugin, views, caches } = await fixture({ rules: [
+    { attribute: 'status', value: 'done', mode: 'preview', locked: true },
+  ] });
+  caches.set('one.md', { frontmatter: { status: 'done' } });
+  await plugin.saveSettings();
+  await views[0].setState({ mode: 'source' });
+  assert.equal(views[0].mode, 'preview');
+  assert.equal(notices.at(-1), 'This file is locked by the following rule.\nstatus = done');
+});
+
 test('manual mode on unmatched files survives tab switches; navigation applies defaults', async () => {
   const { plugin, views, workspace } = await fixture({ defaultMode: 'source' });
   views[0].mode = 'preview';
@@ -216,6 +227,9 @@ test('overlapping updates serialize per view and finish with the latest setting'
 
 test('unload clears icons and queued updates do not restore them', async () => {
   const { plugin, views, workspace } = await fixture({ globalMode: 'force-reading' });
+  // Global reading is not a per-file lock, so seed the tab indicator to verify
+  // that unloading removes any indicator owned by the plugin.
+  views[0].leaf.tabHeaderEl.addClass('dynamic-lock-locked');
   assert.ok(views[0].leaf.tabHeaderEl.classes.has('dynamic-lock-locked'));
   views[0].mode = 'source';
   workspace.trigger('layout-change');
@@ -394,7 +408,7 @@ test('editing rules ignore stale keep-reading flags; global reading keeps its ex
   await command(plugin, 'set-global-mode-reading');
   await views[0].setState({ mode: 'source' });
   await setImmediate();
-  assert.equal(views[0].mode, 'source');
+  assert.equal(views[0].mode, 'preview');
   await command(plugin, 'set-global-mode-editing');
   await views[0].setState({ mode: 'source' });
   await setImmediate();
@@ -411,6 +425,8 @@ test('unload also stops maintained reading rules', async () => {
   plugin.onunload();
   await change;
   await setImmediate();
+  assert.equal(views[0].mode, 'preview');
+  await views[0].setState({ mode: 'source' });
   assert.equal(views[0].mode, 'source');
 });
 
@@ -427,7 +443,7 @@ for (const kind of ['rules', 'folderRules']) {
     assert.equal(toggles().length, 1);
     assert.equal(toggles()[0].value, false);
     await toggles()[0].change(true);
-    assert.equal(plugin.saved[kind][0].keepReading, true);
+    assert.equal(plugin.saved[kind][0].locked, true);
     const modeDropdown = () => tab.containerEl.children
       .find(row => row.controls.some(control => control.type === 'extra'))
       .controls.find(control => control.type === 'dropdown');
@@ -435,7 +451,7 @@ for (const kind of ['rules', 'folderRules']) {
     await modeDropdown().change('source');
     assert.equal(tab.containerEl.scrollTop, 480);
     assert.equal(toggles().length, 0);
-    assert.equal(plugin.saved[kind][0].keepReading, false);
+    assert.equal(plugin.saved[kind][0].locked, false);
     await modeDropdown().change('preview');
     assert.equal(tab.containerEl.scrollTop, 480);
     assert.equal(toggles().length, 1);
