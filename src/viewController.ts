@@ -148,12 +148,11 @@ export class ViewController {
 		const tabHeader = (leaf as unknown as { tabHeaderEl: HTMLElement }).tabHeaderEl;
 
 		if (tabHeader) {
+			tabHeader.removeClass('dynamic-lock-unlocked');
 			if (locked) {
 				tabHeader.addClass('dynamic-lock-locked');
-				tabHeader.removeClass('dynamic-lock-unlocked');
 			} else {
-				tabHeader.removeClass('dynamic-lock-locked');
-				tabHeader.addClass('dynamic-lock-unlocked');
+					tabHeader.removeClass('dynamic-lock-locked');
 			}
 		}
 	}

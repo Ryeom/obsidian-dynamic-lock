@@ -56,7 +56,7 @@ Unless the winning rule has **Read-only** enabled, your manual Reading/Editing c
 
 Opening another file in the tab, reopening a note, or reloading the plugin applies the configured modes again. Changing a plugin setting or selecting a global mode also reapplies the configuration to all open Markdown notes.
 
-The status bar shows the **global mode**. An eye icon on each note tab shows that Editing is available; a crossed-out eye means a matching rule blocks Editing.
+The status bar shows the **global mode**. A closed lock appears on a note tab when a matching rule blocks Editing. Editable notes have no tab icon.
 
 ## Installation
 
