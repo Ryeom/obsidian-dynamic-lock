@@ -46,7 +46,7 @@ When several rules apply, the first match in this order decides the mode:
 
 ### Keep selected notes read-only
 
-Reading property and folder rules have a **Read-only** toggle, off by default for new rules. Only the winning rule above controls whether Editing is blocked; a more specific folder or a property rule can provide an exception. Global **Locked** mode retains its existing behavior of allowing manual switching.
+Reading property and folder rules have an optional **Read-only** toggle, off by default for new rules. Only the winning rule above controls whether Editing is blocked; a more specific folder or a property rule can provide an exception. Global **Locked** mode still allows manual switching unless the winning rule has **Read-only** enabled.
 
 Turn the toggle off to edit normally. Choosing Editing for the rule hides the toggle and clears it. Age rules and the default mode do not enforce Reading. Existing **Keep Reading mode** settings are treated as **Read-only** for compatibility.
 
