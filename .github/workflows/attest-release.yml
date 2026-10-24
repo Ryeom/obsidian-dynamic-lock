@@ -1,0 +1,57 @@
+name: Attest release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and attest (for example, 1.4.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  attest-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release source
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build release assets
+        run: npm run build
+
+      - name: Verify release version matches the tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: test "$(node -p "require('./manifest.json').version")" = "$RELEASE_TAG"
+
+      - name: Generate artifact attestations
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Upload attested release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: gh release upload "$RELEASE_TAG" main.js manifest.json styles.css --clobber
