@@ -22,6 +22,7 @@ jobs:
       RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - name: Check out the release source
+        id: checkout
         uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
@@ -44,6 +45,19 @@ jobs:
       - name: Verify release version matches the tag
         run: test "$(node -p "require('./manifest.json').version")" = "$RELEASE_TAG"
 
+      - name: Record the checked out release source
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create release source predicate
+        env:
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REF: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+          BUILD_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          node -e 'require("fs").writeFileSync("release-source.json", JSON.stringify({repository: process.env.SOURCE_REPOSITORY, ref: process.env.SOURCE_REF, commit: process.env.SOURCE_COMMIT, buildRun: process.env.BUILD_RUN}, null, 2))'
+
       - name: Generate artifact attestations
         uses: actions/attest@v4
         with:
@@ -51,6 +65,16 @@ jobs:
             main.js
             manifest.json
             styles.css
+
+      - name: Attest the checked out release source
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+          predicate-type: https://github.com/Ryeom/obsidian-dynamic-lock/attestation/release-source/v1
+          predicate-path: release-source.json
 
       - name: Upload attested release assets
         env:
